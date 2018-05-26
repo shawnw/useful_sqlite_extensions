@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Math and Numeric Functions</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">Math and Numeric Functions</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#scalar-functions">Scalar Functions</a><ul>
+<li><a href="#trigonmetric">Trigonmetric</a></li>
+<li><a href="#roots-powers-and-logs">Roots, Powers and Logs</a></li>
+<li><a href="#rounding">Rounding</a></li>
+<li><a href="#math">Math</a></li>
+</ul></li>
+<li><a href="#aggregate-functions">Aggregate Functions</a><ul>
+<li><a href="#bitwise">Bitwise</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p>Mostly lifted from MySQL and Postgres. Unless otherwise documented, they do the same thing as the C function of the same name. Pass them <code>NULL</code>, get <code>NULL</code> back. Do something that would make them return a <code>NaN</code>, get <code>NULL</code> back. In the arguments, <em>d</em> means a floating point number, <em>i</em> means an integer. <em>d/i</em> means either.</p>
+<h1 id="scalar-functions">Scalar Functions</h1>
+<h2 id="trigonmetric">Trigonmetric</h2>
+<ul>
+<li>ACOS(d)</li>
+<li>ASIN(d)</li>
+<li>ATAN(d)</li>
+<li>ATAN2(d,d)</li>
+<li>COS(d)</li>
+<li>COT(d) – Cotangent</li>
+<li>SIN(d)</li>
+<li>TAN(d)</li>
+<li>DEGREES(d)</li>
+<li>RADIANS(d)</li>
+</ul>
+<h2 id="roots-powers-and-logs">Roots, Powers and Logs</h2>
+<ul>
+<li>CBRT(d)</li>
+<li>EXP(d)</li>
+<li>LN(d)</li>
+<li>LOG(d) – Base ℯ like MySQL, not base 10 like Postgresql.</li>
+<li>LOG(d,d)</li>
+<li>LOG10(d)</li>
+<li>LOG2(d)</li>
+<li>POWER(d,d)</li>
+<li>SQRT(d)</li>
+</ul>
+<h2 id="rounding">Rounding</h2>
+<ul>
+<li>CEIL(d)</li>
+<li>FLOOR(d)</li>
+<li>ROUND(d) – Overrides the standard one-argument <code>ROUND()</code>. Rounds halfway cases away from zero.</li>
+<li>TRUNC(d) – Rounds towards zero.</li>
+</ul>
+<h2 id="math">Math</h2>
+<ul>
+<li>DIV(i, i)</li>
+<li>MOD(i, i)</li>
+<li>SIGN(d/i)</li>
+<li>PI() – π</li>
+</ul>
+<h1 id="aggregate-functions">Aggregate Functions</h1>
+<h2 id="bitwise">Bitwise</h2>
+<ul>
+<li>BIT_OR(i)</li>
+<li>BIT_XOR(i)</li>
+<li>BIT_AND(i)</li>
+</ul>
+</body>
+</html>

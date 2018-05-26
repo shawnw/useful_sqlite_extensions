@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Extra Unicode Functions</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">Extra Unicode Functions</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#extra-unicode-functions">Extra Unicode functions</a></li>
+<li><a href="#scalar-functions">Scalar Functions</a><ul>
+<li><a href="#informative">Informative</a></li>
+<li><a href="#case-mapping">Case Mapping</a></li>
+<li><a href="#normalization">Normalization</a></li>
+<li><a href="#other-conversions">Other conversions</a></li>
+<li><a href="#unicode-text-compression">Unicode Text Compression</a></li>
+<li><a href="#regular-expressions">Regular Expressions</a></li>
+</ul></li>
+<li><a href="#collations">Collations</a><ul>
+<li><a href="#functions">Functions</a></li>
+<li><a href="#predefined-collation-types">Predefined collation types</a></li>
+<li><a href="#examples">Examples</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="extra-unicode-functions">Extra Unicode functions</h1>
+<p>This Sqlite3 extension module is an extension to the standard <a href="https://www.sqlite.org/src/dir?ci=cdb68d2c64e453fd&amp;name=ext/icu">ICU extension</a> that adds extra functionality for dealing with text in SQL queries.</p>
+<p>Since the ICU extension itself doesn’t seem to be compiled into or otherwise provided by many OS’s sqlite3 packages, it is included as part of this one. See the Sqlite3 ICU documentation for details about what it provides.</p>
+<p>If you do a lot of things in your queries with Unicode text, or even just use Unicode-aware collations on index columns, consider setting the encoding of your databases to UTF-16 when creating them. Most <a href="http://site.icu-project.org/">ICU</a> functions work on UTF-16 strings, so this reduces the amount of converting to and from UTF-8.</p>
+<h1 id="scalar-functions">Scalar Functions</h1>
+<h2 id="informative">Informative</h2>
+<h3 id="icu_version">ICU_VERSION</h3>
+<ul>
+<li>ICU_VERSION()</li>
+</ul>
+<p>Returns the version of the ICU library being used.</p>
+<h3 id="unicode_version">UNICODE_VERSION</h3>
+<ul>
+<li>UNICODE_VERSION()</li>
+</ul>
+<p>Returns the version of Unicode understood by ICU.</p>
+<h2 id="case-mapping">Case Mapping</h2>
+<h3 id="upper">UPPER()</h3>
+<ul>
+<li>UPPER(string)</li>
+<li>UPPER(string, locale)</li>
+</ul>
+<p>Returns <code>string</code> converted to uppercase, with an optional <code>locale</code> for specific rules.</p>
+<h3 id="lower">LOWER()</h3>
+<ul>
+<li>LOWER(string)</li>
+<li>LOWER(string, locale)</li>
+</ul>
+<p>Returns <code>string</code> converted to lowercase, with an optional <code>locale</code> for specific rules.</p>
+<h3 id="title">TITLE()</h3>
+<ul>
+<li>TITLE(string)</li>
+<li>TITLE(string, locale)</li>
+<li>INITCAP(string)</li>
+</ul>
+<p>Returns <code>string</code> converted to lowercase, and the first letter of each word titlecased. The optional <code>locale</code> argument uses specific casing rules, like with <code>UPPER()</code> and <code>LOWER()</code>.</p>
+<p>If <code>string</code> is <code>NULL</code>, returns <code>NULL</code>.</p>
+<h3 id="casefold">CASEFOLD()</h3>
+<ul>
+<li>CASEFOLD(string)</li>
+</ul>
+<p>Returns a case-folded version of <code>string</code>.</p>
+<p>If <code>string</code> is <code>NULL</code>, returns <code>NULL</code>.</p>
+<h2 id="normalization">Normalization</h2>
+<p>Functions for normalizing Unicode text, and concatentation (Since naive concatenation of two normalized Unicode strings can produce a non-normalized string. Yay Unicode!).</p>
+<p>To-Do: Aggregate versions?</p>
+<h3 id="normalize">NORMALIZE()</h3>
+<ul>
+<li>NORMALIZE(string, form)</li>
+</ul>
+<p>Returns <code>string</code> normalized according to <code>form</code>, which can be one of <code>'NFC'</code>, <code>'NFD'</code>, <code>'NFKC'</code>, <code>'NFKD'</code>, or <code>'NFKCCaseFold'</code>.</p>
+<p>If <code>string</code> is <code>NULL</code>, returns <code>NULL</code>.</p>
+<h3 id="nfc">NFC()</h3>
+<ul>
+<li>NFC(string, …)</li>
+<li>NFC_WS(sep, string, …)</li>
+</ul>
+<p>Concatenates its non-NULL arguments together and returns the result in NFC. With one argument is equivalent to <code>NORMALIZE(string, 'NFC')</code>.</p>
+<h3 id="nfd">NFD()</h3>
+<ul>
+<li>NFD(string, …)</li>
+<li>NFD_WS(sep, string, …)</li>
+</ul>
+<p>Concatenates its non-NULL arguments together and returns the result in NFD. With one argument is equivalent to <code>NORMALIZE(string, 'NFD')</code>.</p>
+<h3 id="nfkc">NFKC()</h3>
+<ul>
+<li>NFKC(string, …)</li>
+<li>NFKC_WS(sep, string, …)</li>
+</ul>
+<p>Concatenates its non-NULL arguments together and returns the result in NFKC. With one argument is equivalent to <code>NORMALIZE(string, 'NFKC')</code>.</p>
+<h3 id="nfkd">NFKD()</h3>
+<ul>
+<li>NFKD(string, …)</li>
+<li>NFKD_WS(sep, string, …)</li>
+</ul>
+<p>Concatenates its non-NULL arguments together and returns the reuslt in NFKD. With one argument is equivalent to <code>NORMALIZE(string, 'NFKD')</code>.</p>
+<h2 id="other-conversions">Other conversions</h2>
+<h3 id="to_ascii">TO_ASCII()</h3>
+<ul>
+<li>TO_ASCII(string)</li>
+</ul>
+<p>An enhanced version of <code>SPELLFIX1_TRANSLIT()</code> from the <em>spellfix1</em> extension. It converts Unicode text to ASCII, trying to gracefully downgrade accented characters, ligatures, smart quotes, smart dashes, etc. It knows about more conversions than its inspiration, can handle characters outside the BMP, and deals with grapheme clusters in a more intelligent way.</p>
+<h2 id="unicode-text-compression">Unicode Text Compression</h2>
+<p>There are a few Unicode-specific text compression algorithms. They don’t have as good a compression ratio as more general purpose ones, but they have low overhead for compressing short strings. Could come in handy if you have a table with many short to medium length strings and are trying to save some space.</p>
+<h3 id="scsu_compress">SCSU_COMPRESS()</h3>
+<ul>
+<li>SCSU_COMPRESS(string)</li>
+</ul>
+<p>Returns a blob representing <code>string</code> compressed with <a href="https://en.wikipedia.org/wiki/Standard_Compression_Scheme_for_Unicode">SCSU</a>.</p>
+<h3 id="scsu_decompress">SCSU_DECOMPRESS()</h3>
+<ul>
+<li>SCSU_DECOMPRESS(blob)</li>
+</ul>
+<p>Decompresses <code>blob</code>, which should be <a href="https://en.wikipedia.org/wiki/Standard_Compression_Scheme_for_Unicode">SCSU</a> compressed Unicode text.</p>
+<h3 id="bocu_compress">BOCU_COMPRESS()</h3>
+<ul>
+<li>BOCU_COMPRESS(string)</li>
+</ul>
+<p>Returns a blob representing <code>string</code> compressed with <a href="https://en.wikipedia.org/wiki/Binary_Ordered_Compression_for_Unicode">BOCU-1</a>.</p>
+<h3 id="bocu_decompress">BOCU_DECOMPRESS()</h3>
+<ul>
+<li>BOCU_DECOMPRESS(blob)</li>
+</ul>
+<p>Decompresses <code>blob</code>, which should be <a href="https://en.wikipedia.org/wiki/Binary_Ordered_Compression_for_Unicode">BOCU-1</a> compressed Unicode text.</p>
+<h2 id="regular-expressions">Regular Expressions</h2>
+<p>MySQL-compatible regular expression functions. All also work when the name is prefixed by <strong>ICU_</strong>, to support coexisting with future extensions that use different engines - PCRE, RE2, etc. being loaded at the same time.</p>
+<p>The <code>match_type</code> string argument supports some extra options over MySQL:</p>
+<ul>
+<li><em>w</em> means to use Unicode word breaks instead of traditional ones.</li>
+<li><em>x</em> means that the regexp can have comments and whitespace.</li>
+<li><em>l</em> means to treat the regexp as a literal string to search for.</li>
+</ul>
+<h3 id="regexp">REGEXP()</h3>
+<ul>
+<li>REGEXP(re, string)</li>
+<li>REGEXP(re, string, match_type)</li>
+<li>string REGEXP re</li>
+</ul>
+<p>Returns 1 if <code>string</code> matches <code>re</code>. The entire string must match. The three argument version is an extension over the normal ICU extension implementation.</p>
+<h3 id="regexp_instr">REGEXP_INSTR()</h3>
+<p>See <a href="https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-instr">MySQL REGEXP_INSTR()</a> documentation.</p>
+<p>If the <code>match_type</code> option has a digit in the range 0-9 in it, the position of that capturing group is returned instead of the complete match. 0 is the full match.</p>
+<h3 id="regexp_like">REGEXP_LIKE()</h3>
+<p>See <a href="https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-like">MySQL REGEXP_LIKE()</a> documentation.</p>
+<h3 id="regexp_replace">REGEXP_REPLACE()</h3>
+<p>See <a href="https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-replace">MySQL REGEXP_REPLACE()</a> documentation.</p>
+<p>This implementation currently only supports a <code>pos</code> argument of 1 and <code>occurence</code> of 0 or 1. It also replaces tokens like <code>$N</code> in the replacement string with the N-th capture group.</p>
+<h3 id="regexp_substr">REGEXP_SUBSTR()</h3>
+<p>See <a href="https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-substr">MySQL REGEXP_SUBSTR()</a> documentation.</p>
+<p>If the <code>match_type</code> option has a digit in the range 0-9 in it, that capturing group is returned instead of the complete match. 0 is the full match.</p>
+<h1 id="collations">Collations</h1>
+<p>For when <code>BINARY</code> and <code>NOCASE</code> aren’t good enough.</p>
+<h2 id="functions">Functions</h2>
+<h3 id="icu_load_collationlocale-name">ICU_LOAD_COLLATION(locale, name)</h3>
+<p>See the <a href="https://www.sqlite.org/src/dir?ci=cdb68d2c64e453fd&amp;name=ext/icu">ICU extension</a> documentation.</p>
+<h2 id="predefined-collation-types">Predefined collation types</h2>
+<h3 id="codepoint">CODEPOINT</h3>
+<p>Compares code points instead of code units like <code>BINARY</code> does. Makes a difference when comparing UTF-16 text with code points outside the BMP.</p>
+<h3 id="unocase">UNOCASE</h3>
+<p>Unicode-aware case-insensitive ordering. Compares case-folded code points without any locale-specific rules. If doing lots of comparisions, it’s better to use precomputed casefolded strings.</p>
+<h3 id="equiv">EQUIV</h3>
+<p>Unicode equivalence. The same string normalized in two different forms is equivalent. If comparing a lot of strings, it’s best to canonize them with the same normalization form.</p>
+<h3 id="enocase">ENOCASE</h3>
+<p>Case-insensitive Unicode equivalence. If comparing a lot of strings, it’s better to use precomputed case folded and normalized ones.</p>
+<h2 id="examples">Examples</h2>
+<pre><code>char(0x0122) = char(0x0123) COLLATE BINARY       =&gt; 0
+char(0x0122) = char(0x0123) COLLATE NOCASE       =&gt; 0
+char(0x0122) = char(0x0123) COLLATE UNOCASE      =&gt; 1
+char(0x0122) = nfd(char(0x0122)) COLATE BINARY   =&gt; 0
+char(0x0122) = nfd(char(0x0122)) COLLATE EQUIV   =&gt; 1
+char(0x0122) = nfd(char(0x0123)) COLLATE EQUIV   =&gt; 0
+char(0x0122) = nfd(char(0x0123)) COLLATE ENOCASE =&gt; 1</code></pre>
+</body>
+</html>

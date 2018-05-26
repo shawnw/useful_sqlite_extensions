@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Name Service Switch Tables</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">Name Service Switch Tables</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#tables">Tables</a><ul>
+<li><a href="#etc_passwd">etc_passwd</a></li>
+<li><a href="#etc_group">etc_group</a></li>
+</ul></li>
+<li><a href="#to-do">TO-DO</a></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p>This Sqlite3 extension module provides eponymous virtual tables into common NSS databases on Unix systems, like <em>/etc/passwd</em>.</p>
+<p>Warning: It is <strong>NOT</strong> thread-safe due to underlying C functions not being thread safe. Probably won’t work on anything but glibc systems.</p>
+<h1 id="tables">Tables</h1>
+<h2 id="etc_passwd">etc_passwd</h2>
+<p>Interface to <a href="https://linux.die.net/man/5/passwd">/etc/passwd</a>. Virtual table with the schema:</p>
+<pre><code>CREATE TABLE etc_passwd(name TEXT, password TEXT, uid INTEGER, gid INTEGER, gecos TEXT, userdir TEXT, shell TEXT)</code></pre>
+<p>Comparing the name and uid fields to a specific username or uid in a WHERE clause uses <code>getpwnam_r()</code> or <code>getpwuid_r()</code> respectively. Returning the entire file uses <code>getpwent_r()</code>. Unfortunately that doesn’t make it fully re-enterant.</p>
+<h2 id="etc_group">etc_group</h2>
+<p>Interface to <a href="https://linux.die.net/man/5/group">/etc/group</a>. Virtual table with the schema:</p>
+<pre><code>CREATE TABLE etc_group(name TEXT, password TEXT, gid INTEGER, member TEXT)</code></pre>
+<p>There is one row in the results for each member of a given group. If a group has no members, it has one row with the <code>member</code> column set to <code>NULL</code>.</p>
+<p>Comparing the name and gid fields to a specific group name or gid in a WHERE clause uses <code>getgrnam_r()</code> or <code>getgrgid_r()</code> respectively. Returning the entire file uses <code>getgrent_r()</code>. Unfortunately that doesn’t make it fully re-enterant.</p>
+<h1 id="to-do">TO-DO</h1>
+<ul>
+<li><em>/etc/services</em></li>
+<li><em>/etc/protocols</em></li>
+<li>Others?</li>
+</ul>
+</body>
+</html>

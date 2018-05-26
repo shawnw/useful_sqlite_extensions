@@ -1,5 +1,7 @@
-Math and Numeric Functions
-==========================
+% Math and Numeric Functions
+
+Introduction
+============
 
 Mostly lifted from MySQL and Postgres. Unless otherwise documented,
 they do the same thing as the C function of the same name. Pass them

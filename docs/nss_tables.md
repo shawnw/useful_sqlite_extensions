@@ -1,5 +1,7 @@
-Name Service Switch Tables
-==========================
+% Name Service Switch Tables
+
+Introduction
+============
 
 This Sqlite3 extension module provides eponymous virtual tables into
 common NSS databases on Unix systems, like */etc/passwd*.
@@ -8,9 +10,10 @@ Warning: It is **NOT** thread-safe due to underlying C functions not
 being thread safe. Probably won't work on anything but glibc systems.
 
 Tables
-------
+======
 
-### etc_passwd
+etc_passwd
+----------
 
 Interface to [/etc/passwd]. Virtual table with the schema:
 
@@ -23,7 +26,8 @@ respectively. Returning the entire file uses
 
 [/etc/passwd]: https://linux.die.net/man/5/passwd
 
-### etc_group
+etc_group
+---------
 
 Interface to [/etc/group]. Virtual table with the schema:
 
@@ -40,7 +44,8 @@ respectively. Returning the entire file uses
 
 [/etc/group]: https://linux.die.net/man/5/group
 
-### TO-DO
+TO-DO
+=====
 
 * */etc/services*
 * */etc/protocols*
