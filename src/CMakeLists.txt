@@ -3,7 +3,7 @@ project("Useful Sqlite3 Extensions" LANGUAGES C VERSION 0.1)
 
 find_package(ICU COMPONENTS data uc)
 if(ICU_FOUND)
-  add_library(string_funcs MODULE icu_extras.c stripaccents.c)
+  add_library(string_funcs MODULE icu_extras.c stripaccents.c more_str_funcs.c)
   set_target_properties(string_funcs PROPERTIES C_STANDARD 99)
   target_compile_options(string_funcs PRIVATE -Wall -Wextra)
   target_include_directories(string_funcs PRIVATE ${ICU_INCLUDE_DIRS})
