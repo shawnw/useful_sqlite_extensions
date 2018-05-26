@@ -1,3 +1,5 @@
+% Extra Unicode Functions
+
 Extra Unicode functions
 =======================
 
@@ -33,7 +35,7 @@ Returns the version of the ICU library being used.
 
 ### UNICODE_VERSION
 
-* UNICODE\_VERSION()
+* UNICODE_VERSION()
 
 Returns the version of Unicode understood by ICU.
 
@@ -79,9 +81,9 @@ If `string` is `NULL`, returns `NULL`.
 Normalization
 -------------
 
-Functions for normalizing Unicode text, and coalesce-style
-concatentation (Since naive concatenation of two normalized Unicode
-strings can produce a non-normalized string. Yay Unicode!).
+Functions for normalizing Unicode text, and concatentation (Since
+naive concatenation of two normalized Unicode strings can produce a
+non-normalized string. Yay Unicode!).
 
 To-Do: Aggregate versions?
 
@@ -97,6 +99,7 @@ If `string` is `NULL`, returns `NULL`.
 ### NFC()
 
 * NFC(string, ...)
+* NFC_WS(sep, string, ...)
 
 Concatenates its non-NULL arguments together and returns the result in
 NFC. With one argument is equivalent to `NORMALIZE(string, 'NFC')`.
@@ -104,6 +107,7 @@ NFC. With one argument is equivalent to `NORMALIZE(string, 'NFC')`.
 ### NFD()
 
 * NFD(string, ...)
+* NFD_WS(sep, string, ...)
 
 Concatenates its non-NULL arguments together and returns the result in
 NFD. With one argument is equivalent to `NORMALIZE(string, 'NFD')`.
@@ -111,6 +115,7 @@ NFD. With one argument is equivalent to `NORMALIZE(string, 'NFD')`.
 ### NFKC()
 
 * NFKC(string, ...)
+* NFKC_WS(sep, string, ...)
 
 Concatenates its non-NULL arguments together and returns the result in
 NFKC. With one argument is equivalent to `NORMALIZE(string, 'NFKC')`.
@@ -118,6 +123,7 @@ NFKC. With one argument is equivalent to `NORMALIZE(string, 'NFKC')`.
 ### NFKD()
 
 * NFKD(string, ...)
+* NFKD_WS(sep, string, ...)
 
 Concatenates its non-NULL arguments together and returns the reuslt in
 NFKD. With one argument is equivalent to `NORMALIZE(string, 'NFKD')`.
@@ -127,7 +133,7 @@ Other conversions
 
 ### TO_ASCII()
 
-* TO\_ASCII(string)
+* TO_ASCII(string)
 
 An enhanced version of `SPELLFIX1_TRANSLIT()` from the *spellfix1*
 extension. It converts Unicode text to ASCII, trying to gracefully
@@ -147,25 +153,25 @@ and are trying to save some space.
 
 ### SCSU_COMPRESS()
 
-* SCSU\_COMPRESS(string)
+* SCSU_COMPRESS(string)
 
 Returns a blob representing `string` compressed with [SCSU].
 
 ### SCSU_DECOMPRESS()
 
-* SCSU\_DECOMPRESS(blob)
+* SCSU_DECOMPRESS(blob)
 
 Decompresses `blob`, which should be [SCSU] compressed Unicode text.
 
 ### BOCU_COMPRESS()
 
-* BOCU\_COMPRESS(string)
+* BOCU_COMPRESS(string)
 
 Returns a blob representing `string` compressed with [BOCU-1].
 
 ### BOCU_DECOMPRESS()
 
-* BOCU\_DECOMPRESS(blob)
+* BOCU_DECOMPRESS(blob)
 
 Decompresses `blob`, which should be [BOCU-1] compressed Unicode text.
 

@@ -703,6 +703,71 @@ static struct normalization_forms {
                     "unorm2_getNFKCCasefoldInstance"},
                    {NULL, NULL, NULL}};
 
+static UChar *icuNormalizeUChar(sqlite3_context *p, const UNormalizer2 *norm,
+                                const UChar *zInput, int nInput,
+                                sqlite3_uint64 *nOutput) {
+  UErrorCode status = U_ZERO_ERROR;
+  UChar *zOut = NULL;
+  sqlite3_uint64 nOut = nInput;
+
+  if (nInput == 0) {
+    zOut = sqlite3_malloc(2);
+    if (!zOut) {
+      sqlite3_result_error_nomem(p);
+      return NULL;
+    }
+    *zOut = 0;
+    if (nOutput) {
+      *nOutput = 0;
+    }
+    return zOut;
+  }
+
+  if (unorm2_quickCheck(norm, zInput, nInput / 2, &status) == UNORM_YES &&
+      U_SUCCESS(status)) {
+    // fast path for an already appropriately normalized string
+    zOut = sqlite3_malloc(nInput);
+    if (!zOut) {
+      sqlite3_result_error_nomem(p);
+      return NULL;
+    }
+    memcpy(zOut, zInput, nInput);
+    if (nOutput) {
+      *nOutput = nInput;
+    }
+    return zOut;
+  } else {
+    for (int cnt = 0; cnt < 2; cnt++) {
+      UChar *zNew = sqlite3_realloc64(zOut, nOut);
+      if (zNew == 0) {
+        sqlite3_free(zOut);
+        sqlite3_result_error_nomem(p);
+        return NULL;
+      }
+      zOut = zNew;
+      status = U_ZERO_ERROR;
+      nOut = (sqlite3_uint64)2 * unorm2_normalize(norm, zInput, nInput / 2,
+                                                  zOut, nOut / 2, &status);
+      if (U_SUCCESS(status)) {
+        if (nOutput) {
+          *nOutput = nOut;
+        }
+        return zOut;
+      } else if (status == U_BUFFER_OVERFLOW_ERROR) {
+        assert(cnt == 0);
+        continue;
+      } else {
+        icuFunctionError(p, "unorm2_normalize", status);
+        sqlite3_free(zOut);
+        return NULL;
+      }
+    }
+  }
+  assert(0);
+  return NULL;
+}
+
+// Normalize a string
 static void icuNormFunc16(sqlite3_context *p, int nArg __attribute__((unused)),
                           sqlite3_value **apArg) {
   const UChar *zInput; /* Pointer to input string */
@@ -736,45 +801,91 @@ static void icuNormFunc16(sqlite3_context *p, int nArg __attribute__((unused)),
   if (!zInput) {
     return;
   }
-  nOut = nInput = sqlite3_value_bytes16(apArg[0]);
+  nInput = sqlite3_value_bytes16(apArg[0]);
   if (nInput == 0) {
-    sqlite3_result_text16(p, "", 0, SQLITE_STATIC);
+    sqlite3_result_text(p, "", 0, SQLITE_STATIC);
     return;
   }
 
-  status = U_ZERO_ERROR;
-  if (unorm2_quickCheck(norm, zInput, nInput / 2, &status) == UNORM_YES &&
-      U_SUCCESS(status)) {
-    sqlite3_result_text16(p, zInput, nInput, SQLITE_TRANSIENT);
-    return;
+  zOutput = icuNormalizeUChar(p, norm, zInput, nInput, &nOut);
+  if (zOutput) {
+    sqlite3_result_text64(p, (char *)zOutput, nOut, sqlite3_free, SQLITE_UTF16);
+  }
+}
+
+// Append two normalized strings
+static UChar *icuAppendNormUChars(sqlite3_context *p, const UNormalizer2 *norm,
+                                  UChar *zOutput, sqlite3_uint64 *nOutput,
+                                  const UChar *zApp, int nApp) {
+  UErrorCode status = U_ZERO_ERROR;
+  sqlite3_uint64 nOut = *nOutput;
+  sqlite3_uint64 nNewLen = nOut + nApp;
+
+  if (nApp == 0) {
+    return zOutput;
   }
 
   for (int cnt = 0; cnt < 2; cnt++) {
-    UChar *zNew = sqlite3_realloc64(zOutput, nOut);
+    UChar *zNew = sqlite3_realloc64(zOutput, nNewLen);
     if (zNew == 0) {
       sqlite3_free(zOutput);
       sqlite3_result_error_nomem(p);
-      return;
+      return NULL;
     }
     zOutput = zNew;
     status = U_ZERO_ERROR;
-    nOut = (sqlite3_uint64)2 * unorm2_normalize(norm, zInput, nInput / 2,
-                                                zOutput, nOut / 2, &status);
-
+    nNewLen =
+        (sqlite3_uint64)2 * unorm2_append(norm, zOutput, nOut / 2, nNewLen / 2,
+                                          zApp, nApp / 2, &status);
     if (U_SUCCESS(status)) {
-      sqlite3_result_text64(p, (char *)zOutput, nOut, sqlite3_free,
-                            SQLITE_UTF16);
+      *nOutput = nNewLen;
+      return zOutput;
     } else if (status == U_BUFFER_OVERFLOW_ERROR) {
       assert(cnt == 0);
       continue;
     } else {
-      icuFunctionError(p, "unorm2_normalize", status);
-      sqlite3_free(zOutput);
+      icuFunctionError(p, "unorm2_append", status);
+      return NULL;
     }
-    return;
   }
+  assert(0);
+  return NULL;
+}
 
-  assert(0); /* Unreachable */
+// Append an unnormal string to a normalized one
+static UChar *icuAppendUnNormUChars(sqlite3_context *p,
+                                    const UNormalizer2 *norm, UChar *zOutput,
+                                    sqlite3_uint64 *nOutput, const UChar *zApp,
+                                    int nApp) {
+  UErrorCode status = U_ZERO_ERROR;
+  sqlite3_uint64 nOut = *nOutput;
+  sqlite3_uint64 nNewLen = nOut + nApp;
+
+  for (int cnt = 0; cnt < 2; cnt++) {
+    UChar *zNew = sqlite3_realloc64(zOutput, nNewLen);
+    if (zNew == 0) {
+      sqlite3_free(zOutput);
+      sqlite3_result_error_nomem(p);
+      return NULL;
+    }
+    zOutput = zNew;
+    status = U_ZERO_ERROR;
+    nNewLen = (sqlite3_uint64)2 * unorm2_normalizeSecondAndAppend(
+                                      norm, zOutput, nOut / 2, nNewLen / 2,
+                                      zApp, nApp / 2, &status);
+    if (U_SUCCESS(status)) {
+      *nOutput = nNewLen;
+      return zOutput;
+    } else if (status == U_BUFFER_OVERFLOW_ERROR) {
+      assert(cnt == 0);
+      continue;
+    } else {
+      icuFunctionError(p, "unorm2_normalizeSecondAndAppend", status);
+      return NULL;
+    }
+  }
+  assert(0);
+  return NULL;
 }
 
 static void icuNormConcatFunc16(sqlite3_context *p, int nArg,
@@ -786,6 +897,9 @@ static void icuNormConcatFunc16(sqlite3_context *p, int nArg,
   UErrorCode status;
 
   for (int n = 0; n < nArg; n += 1) {
+    if (sqlite3_value_type(apArg[n]) == SQLITE_NULL) {
+      continue;
+    }
     int nInput;
     const UChar *zInput = sqlite3_value_text16(apArg[n]);
     if (!zInput) {
@@ -797,112 +911,101 @@ static void icuNormConcatFunc16(sqlite3_context *p, int nArg,
       continue;
     }
     if (zOutput) {
-      status = U_ZERO_ERROR;
       if (unorm2_quickCheck(norm, zInput, nInput / 2, &status) == UNORM_YES &&
           U_SUCCESS(status)) {
-        // fast path for appending an already appropriately normalized string
-        sqlite3_uint64 nNewLen = nOut + nInput;
-        for (int cnt = 0; cnt < 2; cnt++) {
-          UChar *zNew = sqlite3_realloc64(zOutput, nNewLen);
-          if (zNew == 0) {
-            sqlite3_free(zOutput);
-            sqlite3_result_error_nomem(p);
-            return;
-          }
-          zOutput = zNew;
-          status = U_ZERO_ERROR;
-          nNewLen = (sqlite3_uint64)2 * unorm2_append(norm, zOutput, nOut / 2,
-                                                      nNewLen / 2, zInput,
-                                                      nInput / 2, &status);
-          if (U_FAILURE(status)) {
-            if (status == U_BUFFER_OVERFLOW_ERROR) {
-              assert(cnt == 0);
-              continue;
-            } else {
-              icuFunctionError(p, "unorm2_append", status);
-              sqlite3_free(zOutput);
-              return;
-            }
-          }
-          nOut = nNewLen;
-          break;
+        zOutput = icuAppendNormUChars(p, norm, zOutput, &nOut, zInput, nInput);
+        if (!zOutput) {
+          return;
         }
       } else {
-        sqlite3_uint64 nNewLen = nOut + nInput;
-        for (int cnt = 0; cnt < 2; cnt++) {
-          UChar *zNew = sqlite3_realloc64(zOutput, nNewLen);
-          if (zNew == 0) {
-            sqlite3_free(zOutput);
-            sqlite3_result_error_nomem(p);
-            return;
-          }
-          zOutput = zNew;
-          status = U_ZERO_ERROR;
-          nNewLen = (sqlite3_uint64)2 *
-                    unorm2_normalizeSecondAndAppend(norm, zOutput, nOut / 2,
-                                                    nNewLen / 2, zInput,
-                                                    nInput / 2, &status);
-          if (U_FAILURE(status)) {
-            if (status == U_BUFFER_OVERFLOW_ERROR) {
-              assert(cnt == 0);
-              continue;
-            } else {
-              icuFunctionError(p, "unorm2_normalizeSecondAndAppend", status);
-              sqlite3_free(zOutput);
-              return;
-            }
-          }
-          nOut = nNewLen;
-          break;
+        // String to append isn't normalized
+        zOutput =
+            icuAppendUnNormUChars(p, norm, zOutput, &nOut, zInput, nInput);
+        if (!zOutput) {
+          return;
         }
       }
     } else {
       // First non-null argument
-      nOut = nInput;
-      status = U_ZERO_ERROR;
-      if (unorm2_quickCheck(norm, zInput, nInput / 2, &status) == UNORM_YES &&
-          U_SUCCESS(status)) {
-        // If already normalized, just copy to output buffer
-        zOutput = sqlite3_malloc64(nOut);
-        if (zOutput == 0) {
-          sqlite3_result_error_nomem(p);
-          return;
-        }
-        memcpy(zOutput, zInput, nInput);
-      } else {
-        for (int cnt = 0; cnt < 2; cnt++) {
-          UChar *zNew = sqlite3_realloc64(zOutput, nOut);
-          if (zNew == 0) {
-            sqlite3_free(zOutput);
-            sqlite3_result_error_nomem(p);
-            return;
-          }
-          zOutput = zNew;
-          status = U_ZERO_ERROR;
-          nOut =
-              (sqlite3_uint64)2 * unorm2_normalize(norm, zInput, nInput / 2,
-                                                   zOutput, nOut / 2, &status);
-
-          if (U_FAILURE(status)) {
-            if (status == U_BUFFER_OVERFLOW_ERROR) {
-              assert(cnt == 0);
-              continue;
-            } else {
-              icuFunctionError(p, "unorm2_normalize", status);
-              sqlite3_free(zOutput);
-              return;
-            }
-          }
-          break;
-        }
+      zOutput = icuNormalizeUChar(p, norm, zInput, nInput, &nOut);
+      if (!zOutput) {
+        return;
       }
     }
   }
 
   if (zOutput) {
     sqlite3_result_text64(p, (char *)zOutput, nOut, sqlite3_free, SQLITE_UTF16);
-  } else if (!empty) {
+  } else if (empty) {
     sqlite3_result_text(p, "", 0, SQLITE_STATIC);
+  }
+}
+
+static void icuNormConcatWSFunc16(sqlite3_context *p, int nArg,
+                                  sqlite3_value **apArg) {
+  const UNormalizer2 *norm = sqlite3_user_data(p);
+  UChar *zOutput = NULL;
+  sqlite3_uint64 nOut = 0;
+  UErrorCode status;
+  UChar *zSep = NULL;
+  sqlite3_uint64 nSep;
+
+  if (nArg <= 1) {
+    return;
+  }
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL) {
+    return;
+  }
+
+  {
+    const UChar *sep = sqlite3_value_text16(apArg[0]);
+    int sepbytes = sqlite3_value_bytes16(apArg[0]);
+    zSep = icuNormalizeUChar(p, norm, sep, sepbytes, &nSep);
+    if (!zSep) {
+      return;
+    }
+  }
+
+  for (int n = 1; n < nArg; n += 1) {
+    if (sqlite3_value_type(apArg[n]) == SQLITE_NULL) {
+      continue;
+    }
+
+    int nInput;
+    const UChar *zInput = sqlite3_value_text16(apArg[n]);
+    nInput = sqlite3_value_bytes16(apArg[n]);
+    if (zOutput) {
+      zOutput = icuAppendNormUChars(p, norm, zOutput, &nOut, zSep, nSep);
+      if (!zOutput) {
+        return;
+      }
+      if (unorm2_quickCheck(norm, zInput, nInput / 2, &status) == UNORM_YES &&
+          U_SUCCESS(status)) {
+        // fast path for appending an already appropriately normalized string
+        zOutput = icuAppendNormUChars(p, norm, zOutput, &nOut, zInput, nInput);
+        if (!zOutput) {
+          return;
+        }
+      } else {
+        // String to append isn't normalized
+        zOutput =
+            icuAppendUnNormUChars(p, norm, zOutput, &nOut, zInput, nInput);
+        if (!zOutput) {
+          return;
+        }
+      }
+    } else {
+      // First non-null argument
+      zOutput = icuNormalizeUChar(p, norm, zInput, nInput, &nOut);
+      if (!zOutput) {
+        return;
+      }
+    }
+  }
+
+  if (zOutput) {
+    sqlite3_result_text64(p, (char *)zOutput, nOut, sqlite3_free, SQLITE_UTF16);
   }
 }
 
@@ -1491,10 +1594,10 @@ void icuStripAccentsFunc(sqlite3_context *context, int argc,
 */
 static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
   const struct IcuScalar {
-    const char *zName;  /* Function name */
-    unsigned char nArg; /* Number of arguments */
-    unsigned short enc; /* Optimal text encoding */
-    void *iContext;     /* sqlite3_user_data() context */
+    const char *zName; /* Function name */
+    int nArg;          /* Number of arguments */
+    int enc;           /* Optimal text encoding */
+    void *iContext;    /* sqlite3_user_data() context */
     void (*xFunc)(sqlite3_context *, int, sqlite3_value **);
   } scalars[] = {
     // Base ICU functions
@@ -1608,6 +1711,8 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
   return rc;
 }
 
+extern int sf_more_init(sqlite3 *);
+
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
@@ -1640,10 +1745,15 @@ __declspec(dllexport)
     return rc;
   }
 
-  // Normalization functions1
+  rc = sf_more_init(db);
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+
+  // Normalization concat functions
   for (int n = 0; n < 4; n += 1) {
     UErrorCode status = U_ZERO_ERROR;
-    sqlite3_create_function(
+    rc = sqlite3_create_function(
         db, normalizers[n].name, -1, SQLITE_UTF16 | SQLITE_DETERMINISTIC,
         (void *)normalizers[n].f(&status), icuNormConcatFunc16, NULL, NULL);
     if (U_FAILURE(status)) {
@@ -1652,6 +1762,25 @@ __declspec(dllexport)
                                     u_errorName(status));
       }
       return SQLITE_ERROR;
+    }
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+
+    char *ws_name = sqlite3_mprintf("%s_ws", normalizers[n].name);
+    rc = sqlite3_create_function(
+        db, ws_name, -1, SQLITE_UTF16 | SQLITE_DETERMINISTIC,
+        (void *)normalizers[n].f(&status), icuNormConcatWSFunc16, NULL, NULL);
+    sqlite3_free(ws_name);
+    if (U_FAILURE(status)) {
+      if (pzErrMsg) {
+        *pzErrMsg = sqlite3_mprintf("ICU error: %s(): %s", normalizers[n].fname,
+                                    u_errorName(status));
+      }
+      return SQLITE_ERROR;
+    }
+    if (rc != SQLITE_OK) {
+      return rc;
     }
   }
 
