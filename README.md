@@ -24,6 +24,8 @@ Build Instructions
 cmake will only build extensions that satisfy dependencies (No ICU dev
 package installed, no libstring_funcs, for example).
 
+A C99 compiler and standard library is required.
+
 To-Do
 -----
 
