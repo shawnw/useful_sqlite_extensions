@@ -17,12 +17,21 @@ Build Instructions
     % cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ../src
     % make
     % sqlite3
-    sqlite3> .load ./libstringfuncs
+    sqlite3> .load ./libstring_funcs
     sqlite3> SELECT regexp_substr('abc def ghi', '[a-z]{3}', 1, 2);
     etc.
 
 cmake will only build extensions that satisfy dependencies (No ICU dev
-package installed, no icu_extras, for example).
+package installed, no libstring_funcs, for example).
+
+To-Do
+-----
+
+* Actually add configure tests for nss_tables.
+* Some of the string functions do a lot of reallocation and could
+  stand to be improved.
+* Test cases!
+* Add more stuff.
 
 License
 -------
