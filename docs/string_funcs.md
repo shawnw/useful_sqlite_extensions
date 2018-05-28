@@ -29,7 +29,7 @@ Informative
 
 ### ICU_VERSION
 
-* ICU\_VERSION()
+* ICU_VERSION()
 
 Returns the version of the ICU library being used.
 
@@ -38,6 +38,14 @@ Returns the version of the ICU library being used.
 * UNICODE_VERSION()
 
 Returns the version of Unicode understood by ICU.
+
+### GCLENGTH()
+
+* GCLENGTH(string)
+
+Returns the number of extended grapheme clusters in `string`. This
+will be less than or equal to `LENGTH(string)`, which returns the
+number of *code points*.
 
 Case Mapping
 ------------
@@ -77,6 +85,27 @@ If `string` is `NULL`, returns `NULL`.
 Returns a case-folded version of `string`.
 
 If `string` is `NULL`, returns `NULL`.
+
+Text Extraction
+---------------
+
+### GCLEFT()
+
+* GCLEFT(string, lenn)
+
+Returns the first `len` extended grapheme clusters from `string`.
+
+### GCSUBSTR()
+
+* GCSUBSTR(string, start, len)
+* GCSUBSTR(string, start)
+
+The `GCSUBSTR(string, start, len)` function returns a substring of
+input `string` that begins with the `start`-th extended grapheme
+cluster and which is `len` clusters long. If `len` is omitted then
+`GCSUBSTR(string, start)` returns all clusters through the end of the
+string beginning with the `start`-th. The left-most character of
+`string` is number 1.
 
 Normalization
 -------------

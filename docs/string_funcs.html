@@ -25,6 +25,7 @@
 <li><a href="#scalar-functions">Scalar Functions</a><ul>
 <li><a href="#informative">Informative</a></li>
 <li><a href="#case-mapping">Case Mapping</a></li>
+<li><a href="#text-extraction">Text Extraction</a></li>
 <li><a href="#normalization">Normalization</a></li>
 <li><a href="#other-conversions">Other conversions</a></li>
 <li><a href="#unicode-text-compression">Unicode Text Compression</a></li>
@@ -53,6 +54,11 @@
 <li>UNICODE_VERSION()</li>
 </ul>
 <p>Returns the version of Unicode understood by ICU.</p>
+<h3 id="gclength">GCLENGTH()</h3>
+<ul>
+<li>GCLENGTH(string)</li>
+</ul>
+<p>Returns the number of extended grapheme clusters in <code>string</code>. This will be less than or equal to <code>LENGTH(string)</code>, which returns the number of <em>code points</em>.</p>
 <h2 id="case-mapping">Case Mapping</h2>
 <h3 id="upper">UPPER()</h3>
 <ul>
@@ -80,6 +86,18 @@
 </ul>
 <p>Returns a case-folded version of <code>string</code>.</p>
 <p>If <code>string</code> is <code>NULL</code>, returns <code>NULL</code>.</p>
+<h2 id="text-extraction">Text Extraction</h2>
+<h3 id="gcleft">GCLEFT()</h3>
+<ul>
+<li>GCLEFT(string, lenn)</li>
+</ul>
+<p>Returns the first <code>len</code> extended grapheme clusters from <code>string</code>.</p>
+<h3 id="gcsubstr">GCSUBSTR()</h3>
+<ul>
+<li>GCSUBSTR(string, start, len)</li>
+<li>GCSUBSTR(string, start)</li>
+</ul>
+<p>The <code>GCSUBSTR(string, start, len)</code> function returns a substring of input <code>string</code> that begins with the <code>start</code>-th extended grapheme cluster and which is <code>len</code> clusters long. If <code>len</code> is omitted then <code>GCSUBSTR(string, start)</code> returns all clusters through the end of the string beginning with the <code>start</code>-th. The left-most character of <code>string</code> is number 1.</p>
 <h2 id="normalization">Normalization</h2>
 <p>Functions for normalizing Unicode text, and concatentation (Since naive concatenation of two normalized Unicode strings can produce a non-normalized string. Yay Unicode!).</p>
 <p>To-Do: Aggregate versions?</p>

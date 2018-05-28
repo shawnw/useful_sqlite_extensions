@@ -1745,6 +1745,11 @@ __declspec(dllexport)
     return rc;
   }
 
+  rc = sf_egc_init(db);
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+
   rc = sf_more_init(db);
   if (rc != SQLITE_OK) {
     return rc;
