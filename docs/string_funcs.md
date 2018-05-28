@@ -1,21 +1,21 @@
-% Extra Unicode Functions
+% Extra String Functions
 
-Extra Unicode functions
-=======================
+Introduction
+============
 
-This Sqlite3 extension module is an extension to the standard
-[ICU extension] that adds extra functionality for dealing with text in
-SQL queries.
+This Sqlite3 extension module adds extra functionality for dealing
+with text in SQL queries, with an emphasis on Unicode. It depends on
+[ICU] for most of its features.
 
-Since the ICU extension itself doesn't seem to be compiled into or
-otherwise provided by many OS's sqlite3 packages, it is included as
-part of this one. See the Sqlite3 ICU documentation for details
-about what it provides.
+Since the standard [ICU extension] itself doesn't seem to be compiled
+into or otherwise provided by many OS's sqlite3 packages, it is
+included as part of this one. See that documentation for details about
+what it provides.
 
 If you do a lot of things in your queries with Unicode text, or even
 just use Unicode-aware collations on index columns, consider setting
-the encoding of your databases to UTF-16 when creating them. Most [ICU]
-functions work on UTF-16 strings, so this reduces the amount of
+the encoding of your databases to UTF-16 when creating them. Most
+[ICU] functions work on UTF-16 strings, so this reduces the amount of
 converting to and from UTF-8.
 
 [ICU]: http://site.icu-project.org/
@@ -43,9 +43,11 @@ Returns the version of Unicode understood by ICU.
 
 * GCLENGTH(string)
 
-Returns the number of extended grapheme clusters in `string`. This
+Returns the number of [extended grapheme clusters] in `string`. This
 will be less than or equal to `LENGTH(string)`, which returns the
 number of *code points*.
+
+[extended grapheme clusters]: http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
 
 Case Mapping
 ------------
@@ -91,9 +93,9 @@ Text Extraction
 
 ### GCLEFT()
 
-* GCLEFT(string, lenn)
+* GCLEFT(string, len)
 
-Returns the first `len` extended grapheme clusters from `string`.
+Returns the first `len` [extended grapheme clusters] from `string`.
 
 ### GCSUBSTR()
 
@@ -101,11 +103,11 @@ Returns the first `len` extended grapheme clusters from `string`.
 * GCSUBSTR(string, start)
 
 The `GCSUBSTR(string, start, len)` function returns a substring of
-input `string` that begins with the `start`-th extended grapheme
-cluster and which is `len` clusters long. If `len` is omitted then
-`GCSUBSTR(string, start)` returns all clusters through the end of the
-string beginning with the `start`-th. The left-most character of
-`string` is number 1.
+input `string` that begins with the `start`-th
+[extended grapheme cluster] and which is `len` clusters long. If `len`
+is omitted then `GCSUBSTR(string, start)` returns all clusters through
+the end of the string beginning with the `start`-th. The left-most
+cluster of `string` is number 1.
 
 Normalization
 -------------
@@ -168,8 +170,8 @@ An enhanced version of `SPELLFIX1_TRANSLIT()` from the *spellfix1*
 extension. It converts Unicode text to ASCII, trying to gracefully
 downgrade accented characters, ligatures, smart quotes, smart dashes,
 etc. It knows about more conversions than its inspiration, can handle
-characters outside the BMP, and deals with grapheme clusters in a more
-intelligent way.
+characters outside the BMP, and deals with combining characters in a
+more intelligent way.
 
 Unicode Text Compression
 ------------------------
@@ -219,7 +221,8 @@ The `match_type` string argument supports some extra options over MySQL:
 
 * *w* means to use Unicode word breaks instead of traditional ones.
 * *x* means that the regexp can have comments and whitespace.
-* *l* means to treat the regexp as a literal string to search for.
+* *l* means to treat the regexp as a literal string to search for and
+  not a regular expression..
 
 ### REGEXP()
 
@@ -285,8 +288,7 @@ Predefined collation types
 ### CODEPOINT
 
 Compares code points instead of code units like `BINARY` does. Makes a
-difference when comparing UTF-16 text with code points outside the
-BMP.
+difference when comparing UTF-16 text with surrogate pairs.
 
 ### UNOCASE
 
