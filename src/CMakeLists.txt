@@ -17,6 +17,11 @@ set_target_properties(math_funcs PROPERTIES C_STANDARD 99
   C_STANDARD_REQUIRED ON)
 target_compile_options(math_funcs PRIVATE -Wall -Wextra)
 
+add_library(bloom_filter1 MODULE bloom_filter.c)
+set_target_properties(bloom_filter1 PROPERTIES C_STANDARD 99
+  C_STANDARD_REQUIRED ON)
+target_compile_options(bloom_filter1 PRIVATE -Wall -Wextra -Wno-implicit-fallthrough)
+
 add_library(nss_tables MODULE nss_tables.c passwd.c group.c)
 set_target_properties(nss_tables PROPERTIES C_STANDARD 99
   C_STANDARD_REQUIRED ON)
