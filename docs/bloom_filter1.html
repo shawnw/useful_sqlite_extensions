@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Bloom Filter Virtual Table</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">Bloom Filter Virtual Table</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#usage">Usage</a><ul>
+<li><a href="#creating-a-table">Creating a table</a></li>
+<li><a href="#populating-the-table">Populating the table</a></li>
+<li><a href="#querying-the-table">Querying the table</a></li>
+</ul></li>
+<li><a href="#example">Example</a></li>
+<li><a href="#implementation-notes">Implementation notes</a></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p><a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom filters</a> are a classic data structure for telling, in a fast and compact manner, if a given value has a chance of being present in a set. This extension module provides virtual tables that act as an interface to a bloom filter. They can be useful as a fast index to tell if a value is probably in a table or certainly isn’t.</p>
+<h1 id="usage">Usage</h1>
+<h2 id="creating-a-table">Creating a table</h2>
+<pre><code>CREATE VIRTUAL TABLE foo USING bloom_filter1(n, p, k);</code></pre>
+<p>The constructor takes three arguments:</p>
+<ul>
+<li><code>n</code> – the expected number of elements that will be stored in the filter.</li>
+<li><code>p</code> – the probability of false positives, as a number between 0 and 1.0. The higher the number, the higher the chance of a false positive.</li>
+<li><code>k</code> – the number of times to hash each value into the filter.</li>
+</ul>
+<p>The only mandatory one is <code>n</code>. If omitted, <code>p</code> defaults to <strong>0.01</strong> (1%), and an ideal value of <code>k</code> is calculated.</p>
+<h2 id="populating-the-table">Populating the table</h2>
+<pre><code>INSERT INTO foo VALUES (&#39;key 1&#39;), (&#39;key 2&#39;), ...;</code></pre>
+<p>All values are first converted to <code>BLOB</code>s and the resuling bytes are hashed. This means that integers and floating point numbers can produce funny results. If you insert <code>1.0</code>, looking for <code>1</code> won’t find it, but looking for <code>'1.0'</code> will.</p>
+<h2 id="querying-the-table">Querying the table</h2>
+<pre><code>SELECT * from foo(&#39;key 1&#39;);</code></pre>
+<p>Returns a single row with a single column set to <strong>1</strong> if the key is found in the filter. No rows are returned if the key is not present. This can be used with <code>EXISTS</code> and <code>IN</code> in queries.</p>
+<p>I’ve thought about making <code>MATCH</code> work too, but it has some issues - you can’t have multiple modules loaded at once that use it, and syntax would be ugly in its own way - you’d have to provide the table name as a string.</p>
+<h1 id="example">Example</h1>
+<pre><code>sqlite&gt; CREATE TABLE plants(name);
+sqlite&gt; CREATE VIRTUAL TABLE vegetables USING bloom_filter1(20);
+sqlite&gt; INSERT INTO plants VALUES (&#39;apple&#39;), (&#39;asparagus&#39;), (&#39;cabbage&#39;), (&#39;grass&#39;);
+sqlite&gt; INSERT INTO vegetables VALUES (&#39;asparagus&#39;), (&#39;cabbage&#39;);
+sqlite&gt; SELECT * FROM plants WHERE EXISTS (SELECT * FROM vegetables(name));
+asparagus
+cabbage
+sqlite3&gt; SELECT * FROM plants WHERE 1 NOT IN vegetables(name);
+apple
+grass</code></pre>
+<h1 id="implementation-notes">Implementation notes</h1>
+<p>The underlying hash function is <a href="https://en.wikipedia.org/wiki/SipHash">SipHash</a>.</p>
+<p>For each virtual table <code>foo</code>, a backing table <code>foo_storage</code> is created, with one row. It has a blob holding the bloom filter, and some informational columns:</p>
+<ul>
+<li><code>n</code> – how many elements the table is intended for. The actual number of elements inserted into it is not tracked.</li>
+<li><code>m</code> – the number of bits used in the filter.</li>
+<li><code>p</code> – the false positive chance.</li>
+<li><code>k</code> – the number of hash functions used.</li>
+</ul>
+<p>The Sqlite3 incremental blob API is used to avoid reading and writing large amounts of data at once.</p>
+</body>
+</html>
