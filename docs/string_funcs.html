@@ -45,16 +45,21 @@
 <p>If you do a lot of things in your queries with Unicode text, or even just use Unicode-aware collations on index columns, consider setting the encoding of your databases to UTF-16 when creating them. Most <a href="http://site.icu-project.org/">ICU</a> functions work on UTF-16 strings, so this reduces the amount of converting to and from UTF-8.</p>
 <h1 id="scalar-functions">Scalar Functions</h1>
 <h2 id="informative">Informative</h2>
-<h3 id="icu_version">ICU_VERSION</h3>
+<h3 id="icu_version">ICU_VERSION()</h3>
 <ul>
 <li>ICU_VERSION()</li>
 </ul>
 <p>Returns the version of the ICU library being used.</p>
-<h3 id="unicode_version">UNICODE_VERSION</h3>
+<h3 id="unicode_version">UNICODE_VERSION()</h3>
 <ul>
 <li>UNICODE_VERSION()</li>
 </ul>
 <p>Returns the version of Unicode understood by ICU.</p>
+<h3 id="char_name">CHAR_NAME()</h3>
+<ul>
+<li>CHAR_NAME(c)</li>
+</ul>
+<p>Returns the Unicode name of the first codepoint in <code>c</code>.</p>
 <h3 id="gclength">GCLENGTH()</h3>
 <ul>
 <li>GCLENGTH(string)</li>

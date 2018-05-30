@@ -1586,6 +1586,51 @@ static int icuEquivCmp(void *arg, int lena, const void *va, int lenb,
   return cmp;
 }
 
+static void char_name(sqlite3_context *ctx, UChar32 c) {
+  char *name;
+  UErrorCode err = U_ZERO_ERROR;
+
+  name = sqlite3_malloc(128);
+  int len = u_charName(c, U_UNICODE_CHAR_NAME, name, 128, &err);
+  if (U_SUCCESS(err)) {
+    sqlite3_result_text(ctx, name, len, sqlite3_free);
+  } else {
+    icuFunctionError(ctx, "u_charName", err);
+  }
+}
+
+void icuCharName8(sqlite3_context *p, int argc __attribute__((unused)),
+                  sqlite3_value **argv) {
+  assert(argc == 1);
+  UChar32 c;
+
+  const unsigned char *utf8 = sqlite3_value_text(argv[0]);
+
+  U8_GET(utf8, 0, 0, -1, c);
+
+  if (c < 0) {
+    sqlite3_result_error(p, "invalid utf-8 code point", -1);
+  } else {
+    char_name(p, c);
+  }
+}
+
+void icuCharName16(sqlite3_context *p, int argc __attribute__((unused)),
+                   sqlite3_value **argv) {
+  assert(argc == 1);
+  UChar32 c;
+
+  const UChar *utf16 = sqlite3_value_text16(argv[0]);
+
+  U16_GET(utf16, 0, 0, -1, c);
+
+  if (c < 0) {
+    sqlite3_result_error(p, "invalid utf-16 code point", -1);
+  } else {
+    char_name(p, c);
+  }
+}
+
 void icuStripAccentsFunc(sqlite3_context *context, int argc,
                          sqlite3_value **argv);
 
@@ -1696,6 +1741,9 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
     {"bocu_decompress", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, &master_bocu1,
      icuDecompressFunc},
     {"normalize", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuNormFunc16},
+
+    {"char_name", 1, SQLITE_UTF8, 0, icuCharName8},
+    {"char_name", 1, SQLITE_UTF16, 0, icuCharName16},
 
   };
   int rc = SQLITE_OK;

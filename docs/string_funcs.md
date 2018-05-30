@@ -27,17 +27,23 @@ Scalar Functions
 Informative
 -----------
 
-### ICU_VERSION
+### ICU_VERSION()
 
 * ICU_VERSION()
 
 Returns the version of the ICU library being used.
 
-### UNICODE_VERSION
+### UNICODE_VERSION()
 
 * UNICODE_VERSION()
 
 Returns the version of Unicode understood by ICU.
+
+### CHAR_NAME()
+
+* CHAR_NAME(c)
+
+Returns the Unicode name of the first codepoint in `c`.
 
 ### GCLENGTH()
 

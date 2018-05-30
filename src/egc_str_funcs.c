@@ -722,7 +722,7 @@ static void sf_gcsubstr8(sqlite3_context *c, int nArg, sqlite3_value **apArg) {
   }
 
   while (*utf8 && start_pos--) {
-    utf8 += = egc_len8(utf8, -1);
+    utf8 += egc_len8(utf8, -1);
   }
 
   if (sublen == -1) {
