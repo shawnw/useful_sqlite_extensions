@@ -470,6 +470,24 @@ int egc_len16(const UChar *utf16, int len) {
   } while (1);
 }
 
+int egc_strlen8(const char *utf8) {
+  int len = 0;
+  while (*utf8) {
+    utf8 += egc_len8(utf8, -1);
+    len += 1;
+  }
+  return len;
+}
+
+int egc_strlen16(const UChar *utf16) {
+  int len = 0;
+  while (*utf16) {
+    utf16 += egc_len16(utf16, -1);
+    len += 1;
+  }
+  return len;
+}
+
 /* Provide native UTF-8 and UTF-16 versions of most functions */
 
 static void sf_gclength8(sqlite3_context *c, int nArg __attribute__((unused)),
@@ -485,13 +503,7 @@ static void sf_gclength8(sqlite3_context *c, int nArg __attribute__((unused)),
     return;
   }
 
-  int len = 0;
-  while (*utf8) {
-    utf8 += egc_len8(utf8, -1);
-    len += 1;
-  }
-
-  sqlite3_result_int(c, len);
+  sqlite3_result_int(c, egc_strlen8(utf8));
 }
 
 static void sf_gclength16(sqlite3_context *c, int nArg __attribute__((unused)),
@@ -507,13 +519,7 @@ static void sf_gclength16(sqlite3_context *c, int nArg __attribute__((unused)),
     return;
   }
 
-  int len = 0;
-  while (*utf16) {
-    utf16 += egc_len16(utf16, -1);
-    len += 1;
-  }
-
-  sqlite3_result_int(c, len);
+  sqlite3_result_int(c, egc_strlen16(utf16));
 }
 
 static void sf_gcleft8(sqlite3_context *c, int nArg __attribute__((unused)),
@@ -537,12 +543,8 @@ static void sf_gcleft8(sqlite3_context *c, int nArg __attribute__((unused)),
     sqlite3_result_text(c, "", 0, SQLITE_STATIC);
     return;
   } else if (n < 0) {
-    int len = 0;
+    int len = egc_strlen8(utf8);
 
-    while (*start) {
-      start += egc_len8(start, -1);
-      len += 1;
-    }
     n = len + n;
     if (n <= 0) {
       sqlite3_result_text(c, "", 0, SQLITE_STATIC);
@@ -581,12 +583,8 @@ static void sf_gcleft16(sqlite3_context *c, int nArg __attribute__((unused)),
     sqlite3_result_text(c, "", 0, SQLITE_STATIC);
     return;
   } else if (n < 0) {
-    int len = 0;
+    int len = egc_strlen16(utf16);
 
-    while (*start) {
-      start += egc_len16(start, -1);
-      len += 1;
-    }
     n = len + n;
     if (n <= 0) {
       sqlite3_result_text(c, "", 0, SQLITE_STATIC);
@@ -617,7 +615,6 @@ static void sf_gcright8(sqlite3_context *c, int nArg __attribute__((unused)),
     return;
   }
 
-  const char *start = utf8;
   int n = sqlite3_value_int(apArg[1]);
 
   if (n == 0) {
@@ -625,10 +622,11 @@ static void sf_gcright8(sqlite3_context *c, int nArg __attribute__((unused)),
     return;
   }
 
-  int len = 0;
-  while (*start) {
-    start += egc_len8(start, -1);
-    len += 1;
+  int len = egc_strlen8(utf8);
+
+  if (len <= n) {
+    sqlite3_result_text(c, utf8, -1, SQLITE_TRANSIENT);
+    return;
   }
 
   int skip;
@@ -638,7 +636,7 @@ static void sf_gcright8(sqlite3_context *c, int nArg __attribute__((unused)),
     skip = abs(n);
   }
 
-  if (skip <= 0 || skip > len) {
+  if (skip < 0 || skip > len) {
     sqlite3_result_text(c, "", 0, SQLITE_STATIC);
   }
 
@@ -662,7 +660,6 @@ static void sf_gcright16(sqlite3_context *c, int nArg __attribute__((unused)),
     return;
   }
 
-  const UChar *start = utf16;
   int n = sqlite3_value_int(apArg[1]);
 
   if (n == 0) {
@@ -670,10 +667,11 @@ static void sf_gcright16(sqlite3_context *c, int nArg __attribute__((unused)),
     return;
   }
 
-  int len = 0;
-  while (*start) {
-    start += egc_len16(start, -1);
-    len += 1;
+  int len = egc_strlen16(utf16);
+
+  if (len <= n) {
+    sqlite3_result_text16(c, utf16, -1, SQLITE_TRANSIENT);
+    return;
   }
 
   int skip;
