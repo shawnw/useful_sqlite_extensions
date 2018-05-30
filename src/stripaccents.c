@@ -454,7 +454,6 @@ static const Transliteration translit[] = {
     {0xFB05, 0x73, 0x74, 0x00, 0x00},  /* ﬅ to st */
     {0xFB06, 0x73, 0x74, 0x00, 0x00},  /* ﬆ to st */
     {0x1F670, 0x65, 0x74, 0x00, 0x00}, /* 🙰 to et */
-
 };
 
 static const Transliteration *
@@ -477,6 +476,10 @@ static unsigned char *transliterate(const UChar *zIn, sqlite3_uint64 nIn,
                                     sqlite3_uint64 *pOut) {
   UErrorCode status = U_ZERO_ERROR;
   const UNormalizer2 *nfc = unorm2_getNFCInstance(&status);
+  if (U_FAILURE(status)) {
+    return NULL;
+  }
+  const UNormalizer2 *nfkd = unorm2_getNFKDInstance(&status);
   if (U_FAILURE(status)) {
     return NULL;
   }
@@ -559,8 +562,23 @@ static unsigned char *transliterate(const UChar *zIn, sqlite3_uint64 nIn,
           xBtm = x + 1;
         }
       }
-      if (c)
-        zOut[nOut++] = '?';
+      if (c) {
+        UChar decomposed[128];
+        status = U_ZERO_ERROR;
+        int len = unorm2_getDecomposition(nfkd, c, decomposed,
+                                          sizeof decomposed, &status);
+        if (U_SUCCESS(status)) {
+          int n = 0;
+          while (len-- > 0 && decomposed[n] <= 127 && n < 4) {
+            zOut[nOut++] = decomposed[n++];
+          }
+          if (n == 0) {
+            zOut[nOut++] = '?';
+          }
+        } else {
+          zOut[nOut++] = '?';
+        }
+      }
     }
   }
   zOut[nOut] = 0;
