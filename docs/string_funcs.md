@@ -97,6 +97,16 @@ Text Extraction
 
 Returns the first `len` [extended grapheme clusters] from `string`.
 
+If `len` is negative, returns all but the last `abs(len)` clusters.
+
+### GCRIGHT()
+
+* GCRIGHT(string, len)
+
+Returns the last `len` [extended grapheme clusters] from `string`.
+
+If `len` is negative, returns all but the first `abs(len)` clusters.
+
 ### GCSUBSTR()
 
 * GCSUBSTR(string, start, len)

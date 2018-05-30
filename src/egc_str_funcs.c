@@ -487,10 +487,10 @@ static void sf_gclength8(sqlite3_context *c, int nArg __attribute__((unused)),
 
   int len = 0;
   while (*utf8) {
-    int i = egc_len8(utf8, -1);
+    utf8 += egc_len8(utf8, -1);
     len += 1;
-    utf8 += i;
   }
+
   sqlite3_result_int(c, len);
 }
 
@@ -509,10 +509,10 @@ static void sf_gclength16(sqlite3_context *c, int nArg __attribute__((unused)),
 
   int len = 0;
   while (*utf16) {
-    int i = egc_len16(utf16, -1);
+    utf16 += egc_len16(utf16, -1);
     len += 1;
-    utf16 += i;
   }
+
   sqlite3_result_int(c, len);
 }
 
@@ -533,16 +533,26 @@ static void sf_gcleft8(sqlite3_context *c, int nArg __attribute__((unused)),
   const char *start = utf8;
   int n = sqlite3_value_int(apArg[1]);
 
-  if (n < 0) {
-    sqlite3_result_error_code(c, SQLITE_MISUSE);
+  if (n == 0) {
+    sqlite3_result_text(c, "", 0, SQLITE_STATIC);
     return;
+  } else if (n < 0) {
+    int len = 0;
+
+    while (*start) {
+      start += egc_len8(start, -1);
+      len += 1;
+    }
+    n = len + n;
+    if (n <= 0) {
+      sqlite3_result_text(c, "", 0, SQLITE_STATIC);
+      return;
+    }
+    start = utf8;
   }
 
-  while (n--) {
+  while (*utf8 && n--) {
     int len = egc_len8(utf8, -1);
-    if (len == 0) {
-      break;
-    }
     endlen += len;
     utf8 += len;
   }
@@ -567,21 +577,121 @@ static void sf_gcleft16(sqlite3_context *c, int nArg __attribute__((unused)),
   const UChar *start = utf16;
   int n = sqlite3_value_int(apArg[1]);
 
-  if (n < 0) {
-    sqlite3_result_error_code(c, SQLITE_MISUSE);
+  if (n == 0) {
+    sqlite3_result_text(c, "", 0, SQLITE_STATIC);
     return;
+  } else if (n < 0) {
+    int len = 0;
+
+    while (*start) {
+      start += egc_len16(start, -1);
+      len += 1;
+    }
+    n = len + n;
+    if (n <= 0) {
+      sqlite3_result_text(c, "", 0, SQLITE_STATIC);
+      return;
+    }
+    start = utf16;
   }
 
-  while (n--) {
+  while (*utf16 && n--) {
     int len = egc_len16(utf16, -1);
-    if (len == 0) {
-      break;
-    }
     endlen += len;
     utf16 += len;
   }
 
   sqlite3_result_text16(c, start, endlen * 2, SQLITE_TRANSIENT);
+}
+
+static void sf_gcright8(sqlite3_context *c, int nArg __attribute__((unused)),
+                        sqlite3_value **apArg) {
+  assert(nArg == 2);
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL) {
+    return;
+  }
+
+  const char *utf8 = (const char *)sqlite3_value_text(apArg[0]);
+  if (!utf8) {
+    return;
+  }
+
+  const char *start = utf8;
+  int n = sqlite3_value_int(apArg[1]);
+
+  if (n == 0) {
+    sqlite3_result_text(c, "", 0, SQLITE_STATIC);
+    return;
+  }
+
+  int len = 0;
+  while (*start) {
+    start += egc_len8(start, -1);
+    len += 1;
+  }
+
+  int skip;
+  if (n > 0) {
+    skip = len - n;
+  } else {
+    skip = abs(n);
+  }
+
+  if (skip <= 0 || skip > len) {
+    sqlite3_result_text(c, "", 0, SQLITE_STATIC);
+  }
+
+  while (*utf8 && skip--) {
+    utf8 += egc_len8(utf8, -1);
+  }
+
+  sqlite3_result_text(c, utf8, -1, SQLITE_TRANSIENT);
+}
+
+static void sf_gcright16(sqlite3_context *c, int nArg __attribute__((unused)),
+                         sqlite3_value **apArg) {
+  assert(nArg == 2);
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL) {
+    return;
+  }
+
+  const UChar *utf16 = sqlite3_value_text16(apArg[0]);
+  if (!utf16) {
+    return;
+  }
+
+  const UChar *start = utf16;
+  int n = sqlite3_value_int(apArg[1]);
+
+  if (n == 0) {
+    sqlite3_result_text(c, "", 0, SQLITE_STATIC);
+    return;
+  }
+
+  int len = 0;
+  while (*start) {
+    start += egc_len16(start, -1);
+    len += 1;
+  }
+
+  int skip;
+  if (n > 0) {
+    skip = len - n;
+  } else {
+    skip = abs(n);
+  }
+
+  if (skip <= 0 || skip > len) {
+    sqlite3_result_text(c, "", 0, SQLITE_STATIC);
+  }
+
+  while (*utf16 && skip--) {
+    utf16 += egc_len16(utf16, -1);
+  }
+
+  sqlite3_result_text16(c, utf16, -1, SQLITE_TRANSIENT);
 }
 
 static void sf_gcsubstr8(sqlite3_context *c, int nArg, sqlite3_value **apArg) {
@@ -611,28 +721,23 @@ static void sf_gcsubstr8(sqlite3_context *c, int nArg, sqlite3_value **apArg) {
     }
   }
 
-  while (start_pos--) {
-    int len = egc_len8(utf8, -1);
-    if (len == 0) {
-      break;
-    }
-    utf8 += len;
+  while (*utf8 && start_pos--) {
+    utf8 += = egc_len8(utf8, -1);
   }
 
   if (sublen == -1) {
     sqlite3_result_text(c, utf8, -1, SQLITE_TRANSIENT);
     return;
   }
+
   const char *start = utf8;
   int endlen = 0;
-  while (sublen--) {
+  while (*utf8 && sublen--) {
     int len = egc_len8(utf8, -1);
-    if (len == 0) {
-      break;
-    }
     endlen += len;
     utf8 += len;
   }
+
   sqlite3_result_text(c, start, endlen, SQLITE_TRANSIENT);
 }
 
@@ -663,28 +768,23 @@ static void sf_gcsubstr16(sqlite3_context *c, int nArg, sqlite3_value **apArg) {
     }
   }
 
-  while (start_pos--) {
-    int len = egc_len16(utf16, -1);
-    if (len == 0) {
-      break;
-    }
-    utf16 += len;
+  while (*utf16 && start_pos--) {
+    utf16 += egc_len16(utf16, -1);
   }
 
   if (sublen == -1) {
     sqlite3_result_text16(c, utf16, -1, SQLITE_TRANSIENT);
     return;
   }
+
   const UChar *start = utf16;
   int endlen = 0;
-  while (sublen--) {
+  while (*utf16 && sublen--) {
     int len = egc_len16(utf16, -1);
-    if (len == 0) {
-      break;
-    }
     endlen += len;
     utf16 += len;
   }
+
   sqlite3_result_text16(c, start, endlen * 2, SQLITE_TRANSIENT);
 }
 
@@ -700,6 +800,8 @@ int sf_egc_init(sqlite3 *db) {
       {"gclength", 1, SQLITE_UTF16 | SQLITE_DETERMINISTIC, NULL, sf_gclength16},
       {"gcleft", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_gcleft8},
       {"gcleft", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, NULL, sf_gcleft16},
+      {"gcright", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_gcright8},
+      {"gcright", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, NULL, sf_gcright16},
       {"gcsubstr", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_gcsubstr8},
       {"gcsubstr", 3, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_gcsubstr8},
       {"gcsubstr", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, NULL, sf_gcsubstr16},

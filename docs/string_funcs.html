@@ -92,6 +92,13 @@
 <li>GCLEFT(string, len)</li>
 </ul>
 <p>Returns the first <code>len</code> <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a> from <code>string</code>.</p>
+<p>If <code>len</code> is negative, returns all but the last <code>abs(len)</code> clusters.</p>
+<h3 id="gcright">GCRIGHT()</h3>
+<ul>
+<li>GCRIGHT(string, len)</li>
+</ul>
+<p>Returns the last <code>len</code> <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a> from <code>string</code>.</p>
+<p>If <code>len</code> is negative, returns all but the first <code>abs(len)</code> clusters.</p>
 <h3 id="gcsubstr">GCSUBSTR()</h3>
 <ul>
 <li>GCSUBSTR(string, start, len)</li>

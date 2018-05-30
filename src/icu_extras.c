@@ -1712,6 +1712,7 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
 }
 
 extern int sf_more_init(sqlite3 *);
+extern int sf_egc_init(sqlite3 *);
 
 #ifdef _WIN32
 __declspec(dllexport)
