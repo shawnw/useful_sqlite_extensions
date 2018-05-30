@@ -11,6 +11,7 @@
       span.underline{text-decoration: underline;}
       div.column{display: inline-block; vertical-align: top; width: 50%;}
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-AMS_CHTML-full" type="text/javascript"></script>
   <!--[if lt IE 9]>
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
   <![endif]-->
@@ -30,6 +31,7 @@
 </ul></li>
 <li><a href="#aggregate-functions">Aggregate Functions</a><ul>
 <li><a href="#bitwise">Bitwise</a></li>
+<li><a href="#statistics">Statistics</a></li>
 </ul></li>
 </ul>
 </nav>
@@ -39,27 +41,37 @@
 <h2 id="trigonmetric">Trigonmetric</h2>
 <ul>
 <li>ACOS(d)</li>
+<li>ACOS(d)</li>
 <li>ASIN(d)</li>
+<li>ASINH(d)</li>
 <li>ATAN(d)</li>
 <li>ATAN2(d,d)</li>
+<li>ATANH(d)</li>
 <li>COS(d)</li>
+<li>COSH(d)</li>
 <li>COT(d) – Cotangent</li>
 <li>SIN(d)</li>
+<li>SINH(d)</li>
 <li>TAN(d)</li>
+<li>TANH(d)</li>
 <li>DEGREES(d)</li>
 <li>RADIANS(d)</li>
 </ul>
 <h2 id="roots-powers-and-logs">Roots, Powers and Logs</h2>
 <ul>
-<li>CBRT(d)</li>
-<li>EXP(d)</li>
-<li>LN(d)</li>
+<li>CBRT(d) – <span class="math inline">\(\sqrt[3]{x}\)</span></li>
+<li>EXP(d) – <span class="math inline">\(e^{x}\)</span></li>
+<li>EXP2(d) – <span class="math inline">\(2^{x}\)</span></li>
+<li>EXPM1(d) – <span class="math inline">\(e^{x-1}\)</span></li>
+<li>HYPOT(d, d) – <span class="math inline">\(\sqrt{x^{2} + y^{2}}\)</span></li>
+<li>LN(d) – <span class="math inline">\(\log_{e} x\)</span></li>
 <li>LOG(d) – Base ℯ like MySQL, not base 10 like Postgresql.</li>
-<li>LOG(d,d)</li>
-<li>LOG10(d)</li>
-<li>LOG2(d)</li>
-<li>POWER(d,d)</li>
-<li>SQRT(d)</li>
+<li>LOG(d,d) – <span class="math inline">\(\log_{x} y\)</span></li>
+<li>LOG1P(d) – <span class="math inline">\(\log_{e} (x+1)\)</span></li>
+<li>LOG10(d) – <span class="math inline">\(\log_{10} x\)</span></li>
+<li>LOG2(d) – <span class="math inline">\(\log_{2} x\)</span></li>
+<li>POWER(d,d) – <span class="math inline">\(x^{y}\)</span></li>
+<li>SQRT(d) – <span class="math inline">\(\sqrt{x}\)</span></li>
 </ul>
 <h2 id="rounding">Rounding</h2>
 <ul>
@@ -70,8 +82,8 @@
 </ul>
 <h2 id="math">Math</h2>
 <ul>
-<li>DIV(i, i)</li>
-<li>MOD(i, i)</li>
+<li>DIV(i, i) – Integer division</li>
+<li>MOD(i, i) – Integer remainder</li>
 <li>SIGN(d/i)</li>
 <li>PI() – π</li>
 </ul>
@@ -81,6 +93,15 @@
 <li>BIT_OR(i)</li>
 <li>BIT_XOR(i)</li>
 <li>BIT_AND(i)</li>
+</ul>
+<h2 id="statistics">Statistics</h2>
+<ul>
+<li>COVAR_POP(d, d)</li>
+<li>COVAR_SAMP(d, d)</li>
+<li>STDDEV_POP(d)</li>
+<li>STDDEV_SAMP(d)</li>
+<li>VAR_POP(d)</li>
+<li>VAR_SAMP(d)</li>
 </ul>
 </body>
 </html>

@@ -9,7 +9,7 @@
 **
 */
 
-/* Math functions */
+/* Math functions. Assumes a C99 conforming standard library. */
 
 #include <math.h>
 #include <stdlib.h>
@@ -54,6 +54,27 @@ static void mf_atan(sqlite3_context *p, int nArg __attribute__((unused)),
   }
 }
 
+static void mf_acosh(sqlite3_context *p, int nArg __attribute__((unused)),
+                     sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, acosh(sqlite3_value_double(apArg[0])));
+  }
+}
+
+static void mf_asinh(sqlite3_context *p, int nArg __attribute__((unused)),
+                     sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, asinh(sqlite3_value_double(apArg[0])));
+  }
+}
+
+static void mf_atanh(sqlite3_context *p, int nArg __attribute__((unused)),
+                     sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, atanh(sqlite3_value_double(apArg[0])));
+  }
+}
+
 static void mf_atan2(sqlite3_context *p, int nArg __attribute__((unused)),
                      sqlite3_value **apArg) {
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL &&
@@ -84,6 +105,27 @@ static void mf_tan(sqlite3_context *p, int nArg __attribute__((unused)),
   }
 }
 
+static void mf_cosh(sqlite3_context *p, int nArg __attribute__((unused)),
+                    sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, cosh(sqlite3_value_double(apArg[0])));
+  }
+}
+
+static void mf_sinh(sqlite3_context *p, int nArg __attribute__((unused)),
+                    sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, sinh(sqlite3_value_double(apArg[0])));
+  }
+}
+
+static void mf_tanh(sqlite3_context *p, int nArg __attribute__((unused)),
+                    sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, tanh(sqlite3_value_double(apArg[0])));
+  }
+}
+
 static void mf_cot(sqlite3_context *p, int nArg __attribute__((unused)),
                    sqlite3_value **apArg) {
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
@@ -105,10 +147,31 @@ static void mf_exp(sqlite3_context *p, int nArg __attribute__((unused)),
   }
 }
 
+static void mf_expm1(sqlite3_context *p, int nArg __attribute__((unused)),
+                     sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, expm1(sqlite3_value_double(apArg[0])));
+  }
+}
+
+static void mf_exp2(sqlite3_context *p, int nArg __attribute__((unused)),
+                    sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, exp2(sqlite3_value_double(apArg[0])));
+  }
+}
+
 static void mf_log(sqlite3_context *p, int nArg __attribute__((unused)),
                    sqlite3_value **apArg) {
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
     sqlite3_result_double(p, log(sqlite3_value_double(apArg[0])));
+  }
+}
+
+static void mf_log1p(sqlite3_context *p, int nArg __attribute__((unused)),
+                     sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
+    sqlite3_result_double(p, log1p(sqlite3_value_double(apArg[0])));
   }
 }
 
@@ -151,6 +214,15 @@ static void mf_sqrt(sqlite3_context *p, int nArg __attribute__((unused)),
   }
 }
 
+static void mf_hypot(sqlite3_context *p, int nArg __attribute__((unused)),
+                     sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) != SQLITE_NULL &&
+      sqlite3_value_type(apArg[1]) != SQLITE_NULL) {
+    sqlite3_result_double(p, hypot(sqlite3_value_double(apArg[0]),
+                                   sqlite3_value_double(apArg[1])));
+  }
+}
+
 static void mf_ceil(sqlite3_context *p, int nArg __attribute__((unused)),
                     sqlite3_value **apArg) {
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
@@ -183,9 +255,9 @@ static void mf_div(sqlite3_context *p, int nArg __attribute__((unused)),
                    sqlite3_value **apArg) {
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL &&
       sqlite3_value_type(apArg[1]) != SQLITE_NULL) {
-    lldiv_t d =
-        lldiv(sqlite3_value_int64(apArg[0]), sqlite3_value_int64(apArg[1]));
-    sqlite3_result_int64(p, d.quot);
+    sqlite3_int64 quot =
+        sqlite3_value_int64(apArg[0]) / sqlite3_value_int64(apArg[1]);
+    sqlite3_result_int64(p, quot);
   }
 }
 
@@ -193,9 +265,9 @@ static void mf_mod(sqlite3_context *p, int nArg __attribute__((unused)),
                    sqlite3_value **apArg) {
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL &&
       sqlite3_value_type(apArg[1]) != SQLITE_NULL) {
-    lldiv_t d =
-        lldiv(sqlite3_value_int64(apArg[0]), sqlite3_value_int64(apArg[1]));
-    sqlite3_result_int64(p, d.rem);
+    sqlite3_int64 rem =
+        sqlite3_value_int64(apArg[0]) % sqlite3_value_int64(apArg[1]);
+    sqlite3_result_int64(p, rem);
   }
 }
 
@@ -230,47 +302,205 @@ struct bit_agg {
 };
 
 static void mf_bit_or_step(sqlite3_context *p, int nArg __attribute__((unused)),
-                      sqlite3_value **apArg)
-{
+                           sqlite3_value **apArg) {
   struct bit_agg *c = sqlite3_aggregate_context(p, sizeof *c);
+  if (!c) {
+    sqlite3_result_error_nomem(p);
+    return;
+  }
+
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
     c->val |= sqlite3_value_int64(apArg[0]);
     c->hasvals = 1;
   }
 }
 
-static void mf_bit_xor_step(sqlite3_context *p, int nArg __attribute__((unused)),
-                      sqlite3_value **apArg)
-{
+static void mf_bit_xor_step(sqlite3_context *p,
+                            int nArg __attribute__((unused)),
+                            sqlite3_value **apArg) {
   struct bit_agg *c = sqlite3_aggregate_context(p, sizeof *c);
+  if (!c) {
+    sqlite3_result_error_nomem(p);
+    return;
+  }
+
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
     c->val ^= sqlite3_value_int64(apArg[0]);
     c->hasvals = 1;
   }
 }
 
-static void mf_bit_and_step(sqlite3_context *p, int nArg __attribute__((unused)),
-                      sqlite3_value **apArg)
-{
+static void mf_bit_and_step(sqlite3_context *p,
+                            int nArg __attribute__((unused)),
+                            sqlite3_value **apArg) {
   struct bit_agg *c = sqlite3_aggregate_context(p, sizeof *c);
+  if (!c) {
+    sqlite3_result_error_nomem(p);
+    return;
+  }
+
   if (!c->init) {
     c->init = 1;
     c->val = ~((sqlite3_uint64)0);
   }
   if (sqlite3_value_type(apArg[0]) != SQLITE_NULL) {
-      c->val &= sqlite3_value_int64(apArg[0]);
-      c->hasvals = 1;
+    c->val &= sqlite3_value_int64(apArg[0]);
+    c->hasvals = 1;
   }
 }
 
-static void mf_bit_final(sqlite3_context *p)
-{
+static void mf_bit_final(sqlite3_context *p) {
   struct bit_agg *c = sqlite3_aggregate_context(p, sizeof *c);
+  if (!c) {
+    sqlite3_result_error_nomem(p);
+    return;
+  }
+
   if (c->hasvals) {
     sqlite3_result_int64(p, c->val);
   }
 }
 
+struct covariance {
+  double xsum;
+  double ysum;
+  double xysum;
+  int n;
+  _Bool init;
+};
+
+static void mf_covar_step(sqlite3_context *ctx,
+                          int nArg __attribute__((unused)),
+                          sqlite3_value **apArg) {
+  struct covariance *cv = sqlite3_aggregate_context(ctx, sizeof *cv);
+  if (!cv) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  if (!cv->init) {
+    cv->ysum = 0.0;
+    cv->xsum = 0.0;
+    cv->xysum = 0.0;
+    cv->n = 0;
+    cv->init = 1;
+  }
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  double y = sqlite3_value_double(apArg[0]);
+  double x = sqlite3_value_double(apArg[1]);
+
+  cv->ysum += y;
+  cv->xsum += x;
+  cv->xysum += x * y;
+  cv->n += 1;
+}
+
+static void mf_covar_samp(sqlite3_context *ctx) {
+  struct covariance *cv = sqlite3_aggregate_context(ctx, sizeof *cv);
+  if (!cv->init || cv->n <= 1) {
+    return;
+  }
+  sqlite3_result_double(ctx, (cv->xysum - cv->ysum * cv->xsum / cv->n) /
+                                 (cv->n - 1));
+}
+
+static void mf_covar_pop(sqlite3_context *ctx) {
+  struct covariance *cv = sqlite3_aggregate_context(ctx, sizeof *cv);
+  if (!cv->init || cv->n == 0) {
+    return;
+  }
+  sqlite3_result_double(ctx, (cv->xysum - cv->ysum * cv->xsum / cv->n) / cv->n);
+}
+
+struct variance {
+  double a;
+  double q;
+  int n;
+  _Bool init;
+};
+
+static void mf_var_step(sqlite3_context *ctx, int nArg __attribute__((unused)),
+                        sqlite3_value **apArg) {
+  struct variance *v = sqlite3_aggregate_context(ctx, sizeof *v);
+  if (!v) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  if (!v->init) {
+    v->a = 0.0;
+    v->q = 0.0;
+    v->n = 0;
+    v->init = 1;
+  }
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL) {
+    return;
+  }
+
+  v->n += 1;
+  double x = sqlite3_value_double(apArg[0]);
+  double a = v->a + (x - v->a) / v->n;
+  double q = v->q + (x - v->a) * (x - a);
+  v->a = a;
+  v->q = q;
+}
+
+static void mf_stddev_samp(sqlite3_context *ctx) {
+  struct variance *v = sqlite3_aggregate_context(ctx, sizeof *v);
+  if (!v) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  if (!v->init || v->n <= 1) {
+    return;
+  }
+  sqlite3_result_double(ctx, sqrt(v->q / (v->n - 1)));
+}
+
+static void mf_stddev_pop(sqlite3_context *ctx) {
+  struct variance *v = sqlite3_aggregate_context(ctx, sizeof *v);
+  if (!v) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  if (!v->init || v->n == 0) {
+    return;
+  }
+  sqlite3_result_double(ctx, sqrt(v->q / v->n));
+}
+
+static void mf_var_samp(sqlite3_context *ctx) {
+  struct variance *v = sqlite3_aggregate_context(ctx, sizeof *v);
+  if (!v) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  if (!v->init || v->n <= 1) {
+    return;
+  }
+  sqlite3_result_double(ctx, v->q / (v->n - 1));
+}
+
+static void mf_var_pop(sqlite3_context *ctx) {
+  struct variance *v = sqlite3_aggregate_context(ctx, sizeof *v);
+  if (!v) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  if (!v->init || v->n == 0) {
+    return;
+  }
+  sqlite3_result_double(ctx, v->q / v->n);
+}
 
 #ifdef _WIN32
 __declspec(dllexport)
@@ -286,13 +516,17 @@ __declspec(dllexport)
     void (*xFunc)(sqlite3_context *, int, sqlite3_value **);
   } scalars[] = {
       {"acos", 1, mf_acos},   {"asin", 1, mf_asin},   {"atan", 1, mf_atan},
+      {"acosh", 1, mf_acosh}, {"asinh", 1, mf_asinh}, {"atanh", 1, mf_atanh},
       {"atan", 2, mf_atan2},  {"atan2", 2, mf_atan2}, {"cos", 1, mf_cos},
       {"cot", 1, mf_cot},     {"sin", 1, mf_sin},     {"tan", 1, mf_tan},
+      {"sinh", 1, mf_sinh},   {"cosh", 1, mf_cosh},   {"tanh", 1, mf_tanh},
       {"degrees", 1, mf_deg}, {"radians", 1, mf_rad},
 
-      {"cbrt", 1, mf_cbrt},   {"exp", 1, mf_exp},     {"ln", 1, mf_log},
-      {"log", 1, mf_log},     {"log", 2, mf_logb},    {"log10", 1, mf_log10},
+      {"cbrt", 1, mf_cbrt},   {"exp", 1, mf_exp},     {"expm1", 1, mf_expm1},
+      {"exp2", 1, mf_exp2},   {"ln", 1, mf_log},      {"log", 1, mf_log},
+      {"log", 2, mf_logb},    {"log1p", 1, mf_log1p}, {"log10", 1, mf_log10},
       {"log2", 1, mf_log2},   {"power", 2, mf_pow},   {"sqrt", 1, mf_sqrt},
+      {"hypot", 2, mf_hypot},
 
       {"ceil", 1, mf_ceil},   {"floor", 1, mf_floor}, {"round", 1, mf_round},
       {"trunc", 1, mf_trunc},
@@ -307,10 +541,15 @@ __declspec(dllexport)
     void (*xStep)(sqlite3_context *, int, sqlite3_value **);
     void (*xFinal)(sqlite3_context *);
   } aggs[] = {
-
-        {"bit_or", 1, mf_bit_or_step, mf_bit_final},
-        {"bit_xor", 1, mf_bit_xor_step, mf_bit_final},
-        {"bit_and", 1, mf_bit_and_step, mf_bit_final},
+      {"bit_or", 1, mf_bit_or_step, mf_bit_final},
+      {"bit_xor", 1, mf_bit_xor_step, mf_bit_final},
+      {"bit_and", 1, mf_bit_and_step, mf_bit_final},
+      {"covar_pop", 2, mf_covar_step, mf_covar_pop},
+      {"covar_samp", 2, mf_covar_step, mf_covar_samp},
+      {"stddev_pop", 1, mf_var_step, mf_stddev_pop},
+      {"stddev_samp", 1, mf_var_step, mf_stddev_samp},
+      {"var_pop", 1, mf_var_step, mf_var_pop},
+      {"var_samp", 1, mf_var_step, mf_var_samp},
   };
   int rc = SQLITE_OK;
 
@@ -323,13 +562,12 @@ __declspec(dllexport)
                                  p->xFunc, 0, 0);
   }
 
-  for (int i = 0;
-       rc == SQLITE_OK && i < (int)(sizeof(aggs) / sizeof(aggs[0]));
+  for (int i = 0; rc == SQLITE_OK && i < (int)(sizeof(aggs) / sizeof(aggs[0]));
        i++) {
     const struct MathAgg *p = &aggs[i];
     rc = sqlite3_create_function(db, p->zName, p->nArg,
-                                 SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
-                                 NULL, p->xStep, p->xFinal);
+                                 SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, NULL,
+                                 p->xStep, p->xFinal);
   }
 
   return rc;

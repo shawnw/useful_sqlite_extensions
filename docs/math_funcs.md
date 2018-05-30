@@ -16,28 +16,38 @@ Trigonmetric
 ------------
 
 * ACOS(d)
+* ACOS(d)
 * ASIN(d)
+* ASINH(d)
 * ATAN(d)
 * ATAN2(d,d)
+* ATANH(d)
 * COS(d)
+* COSH(d)
 * COT(d) -- Cotangent
 * SIN(d)
+* SINH(d)
 * TAN(d)
+* TANH(d)
 * DEGREES(d)
 * RADIANS(d)
 
 Roots, Powers and Logs
 ----------------------
 
-* CBRT(d)
-* EXP(d)
-* LN(d)
+* CBRT(d) -- $\sqrt[3]{x}$
+* EXP(d) -- $e^{x}$
+* EXP2(d) -- $2^{x}$
+* EXPM1(d) -- $e^{x-1}$
+* HYPOT(d, d) -- $\sqrt{x^{2} + y^{2}}$
+* LN(d) -- $\log_{e} x$
 * LOG(d) -- Base ℯ like MySQL, not base 10 like Postgresql.
-* LOG(d,d)
-* LOG10(d)
-* LOG2(d)
-* POWER(d,d)
-* SQRT(d)
+* LOG(d,d) -- $\log_{x} y$
+* LOG1P(d) -- $\log_{e} (x+1)$
+* LOG10(d) -- $\log_{10} x$
+* LOG2(d) -- $\log_{2} x$
+* POWER(d,d) -- $x^{y}$
+* SQRT(d) -- $\sqrt{x}$
 
 Rounding
 --------
@@ -51,8 +61,8 @@ Rounding
 Math
 ----
 
-* DIV(i, i)
-* MOD(i, i)
+* DIV(i, i) -- Integer division
+* MOD(i, i) -- Integer remainder
 * SIGN(d/i)
 * PI() -- π
 
@@ -65,3 +75,13 @@ Bitwise
 * BIT_OR(i)
 * BIT_XOR(i)
 * BIT_AND(i)
+
+Statistics
+----------
+
+* COVAR_POP(d, d)
+* COVAR_SAMP(d, d)
+* STDDEV_POP(d)
+* STDDEV_SAMP(d)
+* VAR_POP(d)
+* VAR_SAMP(d)
