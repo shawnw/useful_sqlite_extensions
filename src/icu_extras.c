@@ -703,6 +703,25 @@ static struct normalization_forms {
                     "unorm2_getNFKCCasefoldInstance"},
                    {NULL, NULL, NULL}};
 
+static const UNormalizer2 *icu_getNormForm(sqlite3_context *ctx,
+                                           const char *form) {
+  UErrorCode status = U_ZERO_ERROR;
+  if (form) {
+    for (int n = 0; normalizers[n].name; n += 1) {
+      if (sqlite3_stricmp(normalizers[n].name, form) == 0) {
+        const UNormalizer2 *norm = normalizers[n].f(&status);
+        if (U_FAILURE(status)) {
+          icuFunctionError(ctx, normalizers[n].fname, status);
+          return NULL;
+        }
+        return norm;
+      }
+    }
+  }
+  sqlite3_result_error(ctx, "Invalid normalization form.", -1);
+  return NULL;
+}
+
 static UChar *icuNormalizeUChar(sqlite3_context *p, const UNormalizer2 *norm,
                                 const UChar *zInput, int nInput,
                                 sqlite3_uint64 *nOutput) {
@@ -774,26 +793,13 @@ static void icuNormFunc16(sqlite3_context *p, int nArg __attribute__((unused)),
   UChar *zOutput = 0;  /* Pointer to output buffer */
   int nInput;          /* Size of utf-16 input string in bytes */
   sqlite3_uint64 nOut; /* Size of output buffer in bytes */
-  UErrorCode status = U_ZERO_ERROR;
-  const UNormalizer2 *norm = NULL;
 
   assert(nArg == 2);
 
   const char *form = (const char *)sqlite3_value_text(apArg[1]);
 
-  for (int n = 0; normalizers[n].name; n += 1) {
-    if (sqlite3_stricmp(normalizers[n].name, form) == 0) {
-      norm = normalizers[n].f(&status);
-      if (U_FAILURE(status)) {
-        icuFunctionError(p, normalizers[n].fname, status);
-        return;
-      }
-      break;
-    }
-  }
-
+  const UNormalizer2 *norm = icu_getNormForm(p, form);
   if (!norm) {
-    sqlite3_result_error(p, "Invalid normalization form.", -1);
     return;
   }
 
@@ -939,6 +945,61 @@ static void icuNormConcatFunc16(sqlite3_context *p, int nArg,
   } else if (empty) {
     sqlite3_result_text(p, "", 0, SQLITE_STATIC);
   }
+}
+
+static void icuRepeatFunc16(sqlite3_context *p,
+                            int nArg __attribute__((unused)),
+                            sqlite3_value **apArg) {
+  assert(nArg == 3);
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  const char *form = (const char *)sqlite3_value_text(apArg[2]);
+  const UNormalizer2 *norm = icu_getNormForm(p, form);
+  if (!norm) {
+    return;
+  }
+
+  int reps = sqlite3_value_int(apArg[1]);
+  if (reps <= 0) {
+    return;
+  }
+
+  const UChar *utf16 = sqlite3_value_text16(apArg[0]);
+  if (!utf16) {
+    return;
+  }
+
+  int len = sqlite3_value_bytes16(apArg[0]);
+
+  sqlite3_uint64 nlen;
+  UChar *normed = icuNormalizeUChar(p, norm, utf16, len, &nlen);
+  if (!normed) {
+    return;
+  }
+
+  UChar *zOut = sqlite3_malloc64(nlen);
+  sqlite3_uint64 nOut = nlen;
+  if (!zOut) {
+    sqlite3_free(normed);
+    sqlite3_result_error_nomem(p);
+  }
+  memcpy(zOut, normed, nlen);
+  reps -= 1;
+
+  while (reps--) {
+    UChar *zNew = icuAppendNormUChars(p, norm, zOut, &nOut, normed, nlen);
+    if (!zNew) {
+      sqlite3_free(normed);
+      return;
+    }
+    zOut = zNew;
+  }
+  sqlite3_free(normed);
+  sqlite3_result_text64(p, (char *)zOut, nOut, sqlite3_free, SQLITE_UTF16);
 }
 
 static void icuNormConcatWSFunc16(sqlite3_context *p, int nArg,
@@ -1741,6 +1802,7 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
     {"bocu_decompress", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, &master_bocu1,
      icuDecompressFunc},
     {"normalize", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuNormFunc16},
+    {"repeat", 3, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuRepeatFunc16},
 
     {"char_name", 1, SQLITE_UTF8, 0, icuCharName8},
     {"char_name", 1, SQLITE_UTF16, 0, icuCharName16},

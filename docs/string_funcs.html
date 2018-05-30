@@ -212,6 +212,12 @@
 <li>CONCAT_WS(sep, string, …)</li>
 </ul>
 <p>Returns a string concatenating its arguments together. If <code>MYSQL_CONCAT()</code> gest a <code>NULL</code> argument, it returns <code>NULL</code>. The other versions just skip those arguments. The <code>_WS</code> version puts <code>sep</code> between strings.</p>
+<h3 id="repeat">REPEAT()</h3>
+<ul>
+<li>REPEAT(string, count)</li>
+<li>REPEAT(string, count, form)</li>
+</ul>
+<p>Returns a new string created by repeating <code>string</code> <code>count</code> times. If a third argument is given, it’s the normalization form to use for the result.</p>
 <h1 id="collations">Collations</h1>
 <p>For when <code>BINARY</code> and <code>NOCASE</code> aren’t good enough.</p>
 <h2 id="functions">Functions</h2>

@@ -12,6 +12,7 @@
 /* Additional string functions that don't involve unicode character
    properties or the like. */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,7 +46,7 @@ static void sf_concat(sqlite3_context *p, int nArg, sqlite3_value **apArg) {
   // MySQL concat() returns NULL if given any NULL arguments, Postgres
   // just ignores NULLS.
   _Bool mysql_style = sqlite3_user_data(p);
-  
+
   for (int n = 0; n < nArg; n += 1) {
     if (sqlite3_value_type(apArg[n]) == SQLITE_NULL) {
       if (mysql_style) {
@@ -133,6 +134,38 @@ static void sf_concat_ws(sqlite3_context *p, int nArg, sqlite3_value **apArg) {
   }
 }
 
+static void sf_repeat8(sqlite3_context *p, int nArg __attribute__((unused)),
+                       sqlite3_value **apArg) {
+  assert(nArg == 2);
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  const unsigned char *t = sqlite3_value_text(apArg[0]);
+  int tlen = sqlite3_value_bytes(apArg[0]);
+  int reps = sqlite3_value_int(apArg[1]);
+
+  if (reps <= 0) {
+    return;
+  }
+
+  sqlite3_uint64 olen = (sqlite3_uint64)reps * tlen;
+  unsigned char *output = sqlite3_malloc64(olen);
+  if (!output) {
+    sqlite3_result_error_nomem(p);
+    return;
+  }
+
+  size_t off = 0;
+  while (reps--) {
+    memcpy(output + off, t, tlen);
+    off += tlen;
+  }
+  sqlite3_result_text64(p, (const char *)output, olen, sqlite3_free,
+                        SQLITE_UTF8);
+}
+
 int sf_more_init(sqlite3 *db) {
   const struct Scalar {
     const char *zName;  /* Function name */
@@ -145,6 +178,7 @@ int sf_more_init(sqlite3 *db) {
       {"mysql_concat", -1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, (void *)1,
        sf_concat},
       {"concat_ws", -1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_concat_ws},
+      {"repeat", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_repeat8},
   };
   int rc = SQLITE_OK;
 

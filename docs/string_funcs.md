@@ -321,6 +321,15 @@ Returns a string concatenating its arguments together. If
 versions just skip those arguments. The `_WS` version puts `sep`
 between strings.
 
+### REPEAT()
+
+* REPEAT(string, count)
+* REPEAT(string, count, form)
+
+Returns a new string created by repeating `string` `count` times. If a
+third argument is given, it's the normalization form to use for the
+result.
+
 Collations
 ==========
 
