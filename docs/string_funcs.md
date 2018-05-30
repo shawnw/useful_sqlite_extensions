@@ -91,6 +91,18 @@ If `string` is `NULL`, returns `NULL`.
 Text Extraction
 ---------------
 
+Sqlite3 provides one function, `SUBSTR()`, for extracting text from a
+string. It has the major drawback that it treats one Unicode code
+point as one character. As soon as you start getting outside of the
+Latin characters (And even in them if dealing with text in NFD
+format), that's not true. It's very easy to cut off a base character's
+following combining characters, for example, with undesirable results.
+
+The entire question of "What is a character?" gets very complicated
+fast when it comes to Unicode. The following functions consider
+characters to be [extended grapheme clusters], which means they
+*usually* do what people expect.
+
 ### GCLEFT()
 
 * GCLEFT(string, len)
@@ -113,17 +125,17 @@ If `len` is negative, returns all but the first `abs(len)` clusters.
 * GCSUBSTR(string, start)
 
 The `GCSUBSTR(string, start, len)` function returns a substring of
-input `string` that begins with the `start`-th
-[extended grapheme cluster] and which is `len` clusters long. If `len`
-is omitted then `GCSUBSTR(string, start)` returns all clusters through
-the end of the string beginning with the `start`-th. The left-most
-cluster of `string` is number 1.
+input `string` that begins with the `start`-th extended grapheme
+cluster and which is `len` clusters long. If `len` is omitted then
+`GCSUBSTR(string, start)` returns all clusters through the end of the
+string beginning with the `start`-th. The left-most cluster of
+`string` is number 1.
 
 Normalization
 -------------
 
-Functions for normalizing Unicode text, and concatentation (Since
-naive concatenation of two normalized Unicode strings can produce a
+Functions for normalizing Unicode text, and normalized concatentation
+(Since naive joining of two normalized Unicode strings can produce a
 non-normalized string. Yay Unicode!).
 
 To-Do: Aggregate versions?
@@ -145,6 +157,8 @@ If `string` is `NULL`, returns `NULL`.
 Concatenates its non-NULL arguments together and returns the result in
 NFC. With one argument is equivalent to `NORMALIZE(string, 'NFC')`.
 
+The `_WS` version intersperses `sep` between strings.
+
 ### NFD()
 
 * NFD(string, ...)
@@ -152,6 +166,8 @@ NFC. With one argument is equivalent to `NORMALIZE(string, 'NFC')`.
 
 Concatenates its non-NULL arguments together and returns the result in
 NFD. With one argument is equivalent to `NORMALIZE(string, 'NFD')`.
+
+The `_WS` version intersperses `sep` between strings.
 
 ### NFKC()
 
@@ -161,6 +177,8 @@ NFD. With one argument is equivalent to `NORMALIZE(string, 'NFD')`.
 Concatenates its non-NULL arguments together and returns the result in
 NFKC. With one argument is equivalent to `NORMALIZE(string, 'NFKC')`.
 
+The `_WS` version intersperses `sep` between strings.
+
 ### NFKD()
 
 * NFKD(string, ...)
@@ -168,6 +186,8 @@ NFKC. With one argument is equivalent to `NORMALIZE(string, 'NFKC')`.
 
 Concatenates its non-NULL arguments together and returns the reuslt in
 NFKD. With one argument is equivalent to `NORMALIZE(string, 'NFKD')`.
+
+The `_WS` version intersperses `sep` between strings.
 
 Other conversions
 -----------------
@@ -232,7 +252,7 @@ The `match_type` string argument supports some extra options over MySQL:
 * *w* means to use Unicode word breaks instead of traditional ones.
 * *x* means that the regexp can have comments and whitespace.
 * *l* means to treat the regexp as a literal string to search for and
-  not a regular expression..
+  not a regular expression.
 
 ### REGEXP()
 
@@ -279,6 +299,20 @@ capturing group is returned instead of the complete match. 0 is the
 full match.
 
 [MySQL REGEXP_SUBSTR()]: https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-substr
+
+Other functions
+---------------
+
+### CONCAT()
+
+* CONCAT(string, ...)
+* MYSQL_CONCAT(string, ...)
+* CONCAT_WS(sep, string, ...)
+
+Returns a string concatenating its arguments together. If
+`MYSQL_CONCAT()` gest a `NULL` argument, it returns `NULL`. The other
+versions just skip those arguments. The `_WS` version puts `sep`
+between strings.
 
 Collations
 ==========

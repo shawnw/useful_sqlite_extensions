@@ -30,6 +30,7 @@
 <li><a href="#other-conversions">Other conversions</a></li>
 <li><a href="#unicode-text-compression">Unicode Text Compression</a></li>
 <li><a href="#regular-expressions">Regular Expressions</a></li>
+<li><a href="#other-functions">Other functions</a></li>
 </ul></li>
 <li><a href="#collations">Collations</a><ul>
 <li><a href="#functions">Functions</a></li>
@@ -87,6 +88,8 @@
 <p>Returns a case-folded version of <code>string</code>.</p>
 <p>If <code>string</code> is <code>NULL</code>, returns <code>NULL</code>.</p>
 <h2 id="text-extraction">Text Extraction</h2>
+<p>Sqlite3 provides one function, <code>SUBSTR()</code>, for extracting text from a string. It has the major drawback that it treats one Unicode code point as one character. As soon as you start getting outside of the Latin characters (And even in them if dealing with text in NFD format), that’s not true. It’s very easy to cut off a base character’s following combining characters, for example, with undesirable results.</p>
+<p>The entire question of “What is a character?” gets very complicated fast when it comes to Unicode. The following functions consider characters to be <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a>, which means they <em>usually</em> do what people expect.</p>
 <h3 id="gcleft">GCLEFT()</h3>
 <ul>
 <li>GCLEFT(string, len)</li>
@@ -104,9 +107,9 @@
 <li>GCSUBSTR(string, start, len)</li>
 <li>GCSUBSTR(string, start)</li>
 </ul>
-<p>The <code>GCSUBSTR(string, start, len)</code> function returns a substring of input <code>string</code> that begins with the <code>start</code>-th [extended grapheme cluster] and which is <code>len</code> clusters long. If <code>len</code> is omitted then <code>GCSUBSTR(string, start)</code> returns all clusters through the end of the string beginning with the <code>start</code>-th. The left-most cluster of <code>string</code> is number 1.</p>
+<p>The <code>GCSUBSTR(string, start, len)</code> function returns a substring of input <code>string</code> that begins with the <code>start</code>-th extended grapheme cluster and which is <code>len</code> clusters long. If <code>len</code> is omitted then <code>GCSUBSTR(string, start)</code> returns all clusters through the end of the string beginning with the <code>start</code>-th. The left-most cluster of <code>string</code> is number 1.</p>
 <h2 id="normalization">Normalization</h2>
-<p>Functions for normalizing Unicode text, and concatentation (Since naive concatenation of two normalized Unicode strings can produce a non-normalized string. Yay Unicode!).</p>
+<p>Functions for normalizing Unicode text, and normalized concatentation (Since naive joining of two normalized Unicode strings can produce a non-normalized string. Yay Unicode!).</p>
 <p>To-Do: Aggregate versions?</p>
 <h3 id="normalize">NORMALIZE()</h3>
 <ul>
@@ -120,24 +123,28 @@
 <li>NFC_WS(sep, string, …)</li>
 </ul>
 <p>Concatenates its non-NULL arguments together and returns the result in NFC. With one argument is equivalent to <code>NORMALIZE(string, 'NFC')</code>.</p>
+<p>The <code>_WS</code> version intersperses <code>sep</code> between strings.</p>
 <h3 id="nfd">NFD()</h3>
 <ul>
 <li>NFD(string, …)</li>
 <li>NFD_WS(sep, string, …)</li>
 </ul>
 <p>Concatenates its non-NULL arguments together and returns the result in NFD. With one argument is equivalent to <code>NORMALIZE(string, 'NFD')</code>.</p>
+<p>The <code>_WS</code> version intersperses <code>sep</code> between strings.</p>
 <h3 id="nfkc">NFKC()</h3>
 <ul>
 <li>NFKC(string, …)</li>
 <li>NFKC_WS(sep, string, …)</li>
 </ul>
 <p>Concatenates its non-NULL arguments together and returns the result in NFKC. With one argument is equivalent to <code>NORMALIZE(string, 'NFKC')</code>.</p>
+<p>The <code>_WS</code> version intersperses <code>sep</code> between strings.</p>
 <h3 id="nfkd">NFKD()</h3>
 <ul>
 <li>NFKD(string, …)</li>
 <li>NFKD_WS(sep, string, …)</li>
 </ul>
 <p>Concatenates its non-NULL arguments together and returns the reuslt in NFKD. With one argument is equivalent to <code>NORMALIZE(string, 'NFKD')</code>.</p>
+<p>The <code>_WS</code> version intersperses <code>sep</code> between strings.</p>
 <h2 id="other-conversions">Other conversions</h2>
 <h3 id="to_ascii">TO_ASCII()</h3>
 <ul>
@@ -172,7 +179,7 @@
 <ul>
 <li><em>w</em> means to use Unicode word breaks instead of traditional ones.</li>
 <li><em>x</em> means that the regexp can have comments and whitespace.</li>
-<li><em>l</em> means to treat the regexp as a literal string to search for and not a regular expression..</li>
+<li><em>l</em> means to treat the regexp as a literal string to search for and not a regular expression.</li>
 </ul>
 <h3 id="regexp">REGEXP()</h3>
 <ul>
@@ -192,6 +199,14 @@
 <h3 id="regexp_substr">REGEXP_SUBSTR()</h3>
 <p>See <a href="https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-substr">MySQL REGEXP_SUBSTR()</a> documentation.</p>
 <p>If the <code>match_type</code> option has a digit in the range 0-9 in it, that capturing group is returned instead of the complete match. 0 is the full match.</p>
+<h2 id="other-functions">Other functions</h2>
+<h3 id="concat">CONCAT()</h3>
+<ul>
+<li>CONCAT(string, …)</li>
+<li>MYSQL_CONCAT(string, …)</li>
+<li>CONCAT_WS(sep, string, …)</li>
+</ul>
+<p>Returns a string concatenating its arguments together. If <code>MYSQL_CONCAT()</code> gest a <code>NULL</code> argument, it returns <code>NULL</code>. The other versions just skip those arguments. The <code>_WS</code> version puts <code>sep</code> between strings.</p>
 <h1 id="collations">Collations</h1>
 <p>For when <code>BINARY</code> and <code>NOCASE</code> aren’t good enough.</p>
 <h2 id="functions">Functions</h2>
