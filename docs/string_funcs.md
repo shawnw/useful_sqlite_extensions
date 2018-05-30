@@ -198,8 +198,9 @@ Other conversions
 
 An enhanced version of `SPELLFIX1_TRANSLIT()` from the *spellfix1*
 extension. It converts Unicode text to ASCII, trying to gracefully
-downgrade accented characters, ligatures, smart quotes, smart dashes,
-etc. It knows about more conversions than its inspiration, can handle
+downgrade many Latin accented characters and ligatures, transliterate
+Greek and Cyrillic characters, smart quotes, smart dashes, etc. It
+knows about more conversions than its inspiration, can handle
 characters outside the BMP, and deals with combining characters in a
 more intelligent way.
 

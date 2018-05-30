@@ -150,7 +150,7 @@
 <ul>
 <li>TO_ASCII(string)</li>
 </ul>
-<p>An enhanced version of <code>SPELLFIX1_TRANSLIT()</code> from the <em>spellfix1</em> extension. It converts Unicode text to ASCII, trying to gracefully downgrade accented characters, ligatures, smart quotes, smart dashes, etc. It knows about more conversions than its inspiration, can handle characters outside the BMP, and deals with combining characters in a more intelligent way.</p>
+<p>An enhanced version of <code>SPELLFIX1_TRANSLIT()</code> from the <em>spellfix1</em> extension. It converts Unicode text to ASCII, trying to gracefully downgrade many Latin accented characters and ligatures, transliterate Greek and Cyrillic characters, smart quotes, smart dashes, etc. It knows about more conversions than its inspiration, can handle characters outside the BMP, and deals with combining characters in a more intelligent way.</p>
 <h2 id="unicode-text-compression">Unicode Text Compression</h2>
 <p>There are a few Unicode-specific text compression algorithms. They don’t have as good a compression ratio as more general purpose ones, but they have low overhead for compressing short strings. Could come in handy if you have a table with many short to medium length strings and are trying to save some space.</p>
 <h3 id="scsu_compress">SCSU_COMPRESS()</h3>
