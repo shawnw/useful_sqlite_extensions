@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project("Useful Sqlite3 Extensions" LANGUAGES C VERSION 0.1)
 
-find_package(ICU COMPONENTS data uc)
+find_package(ICU COMPONENTS data uc i18n)
 if(ICU_FOUND)
   add_library(string_funcs MODULE icu_extras.c stripaccents.c egc_str_funcs.c
     more_str_funcs.c)
