@@ -5,9 +5,13 @@ A handful of hopefully useful Sqlite3 extensions. Written mostly as a
 way to get more familiar with the extension frameworks. See the files
 in the *docs/* directory for details on individual extensions.
 
-* string_funcs - Lots of extra Unicode-aware text handling functions.
+* string_funcs - Lots of extra Unicode-aware text handling functions
+  and more. Includes all of the standard ICU module as well.
 * math_funcs - Assorted floating-point functions.
 * nss_tables - Interfaces to */etc/passwd* etc.
+* blob_funcs - Assorted functions that act on blobs.
+* pcre2_funcs - Regular expressions using PCRE2
+* bloom_filter1 - Bloom filter indexes.
 
 Build Instructions
 ------------------
@@ -39,5 +43,3 @@ License
 -------
 
 MIT.
-
-         
