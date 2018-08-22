@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Extra blob functions</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">Extra blob functions</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#scalar-functions">Scalar Functions</a><ul>
+<li><a href="#formatting">Formatting</a></li>
+<li><a href="#message-digests">Message Digests</a></li>
+<li><a href="#encryption">Encryption</a></li>
+</ul></li>
+<li><a href="#aggregate-functions">Aggregate Functions</a></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p>This Sqlite3 extension module adds assorted functions for working with BLOB types (And strings). Requires OpenSSL.</p>
+<p>Largely influenced by MySQL functions in features, names and argument order.</p>
+<h1 id="scalar-functions">Scalar Functions</h1>
+<h2 id="formatting">Formatting</h2>
+<h3 id="unhex">UNHEX()</h3>
+<ul>
+<li>UNHEX(str)</li>
+</ul>
+<p>Does the opposite of the built in <code>HEX()</code> function - given a string that’s Base16 encoded, returns the decoded BLOB. Returns <code>NULL</code> if the string is not Base16 encoded or isn’t an even length, or if passed a <code>NULL</code>.</p>
+<h3 id="to_base64">TO_BASE64()</h3>
+<ul>
+<li>TO_BASE64(blob)</li>
+</ul>
+<p>Returns <code>blob</code> encoded as a Base64 string. To match MySQL, the result is broken up into multiple lines if long enough.</p>
+<h3 id="from_base64">FROM_BASE64()</h3>
+<ul>
+<li>FROM_BASE64(str)</li>
+</ul>
+<p>Returns <code>str</code> decoded from Base64 into a BLOB. If the argument is <code>NULL</code> or an invalid Base64 string, returns <code>NULL</code>.</p>
+<h2 id="message-digests">Message Digests</h2>
+<p>If any of these functions are passed a <code>NULL</code> argument, return <code>NULL</code>.</p>
+<h3 id="md5">MD5()</h3>
+<ul>
+<li>MD5(b)</li>
+</ul>
+<p>Returns the MD5 digest of its blob argument as a Base16 encoded string.</p>
+<h3 id="sha1">SHA1()</h3>
+<ul>
+<li>SHA1(b)</li>
+</ul>
+<p>Returns the SHA1 digest of its blob argument as a Base16 encoded string.</p>
+<h3 id="sha2">SHA2()</h3>
+<ul>
+<li>SHA2(b, i)</li>
+</ul>
+<p>Returns the <code>i</code>-bit SHA2 digest of its blob argument as a Base16 encoded string. <code>i</code> can be 224, 256, 384, 512, or 0 (Which is treated as 256).</p>
+<h4 id="hmac_sha2">HMAC_SHA2()</h4>
+<ul>
+<li>HMAC_SHA2(i, secret, b)</li>
+</ul>
+<p>Returns the HMAC of <code>b</code>, using the <code>i</code>-bit SHA2 algorithm, and secret <code>secret</code> as a Base16 encoded string.</p>
+<h2 id="encryption">Encryption</h2>
+<h3 id="aes_encrypt">AES_ENCRYPT()</h3>
+<ul>
+<li>AES_ENCRYPT(str, key)</li>
+</ul>
+<p>Returns a BLOB of <code>str</code> encrypted using the <strong>AES-128-ECB</strong> algorithm with key <code>key</code>. The key should be a 128 bit (16 byte) blob or string.</p>
+<h3 id="aes_decrypt">AES_DECRYPT()</h3>
+<ul>
+<li>AES_DECRYPT(aes, key)</li>
+</ul>
+<p>Returns the decrypted <code>aes</code>, which is a BLOB holding padded, <strong>AES-128-ECB</strong> encrypted data.</p>
+<h1 id="aggregate-functions">Aggregate Functions</h1>
+<p>TODO: Aggregate versions of the digest functions?</p>
+</body>
+</html>

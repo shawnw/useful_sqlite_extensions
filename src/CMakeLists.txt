@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project("Useful Sqlite3 Extensions" LANGUAGES C VERSION 0.1)
+project("Useful Sqlite3 Extensions" LANGUAGES C VERSION 0.2)
 
 find_package(ICU COMPONENTS data uc i18n)
 if(ICU_FOUND)
@@ -10,6 +10,15 @@ if(ICU_FOUND)
   target_compile_options(string_funcs PRIVATE -Wall -Wextra)
   target_include_directories(string_funcs PRIVATE ${ICU_INCLUDE_DIRS})
   target_link_libraries(string_funcs ${ICU_LIBRARIES})
+endif()
+
+find_package(OpenSSL)
+if(OpenSSL_FOUND)
+  add_library(blob_funcs MODULE blob_funcs.c)
+  set_target_properties(blob_funcs PROPERTIES C_STANDARD 99
+    C_STANDARD_REQUIRED ON)
+  target_include_directories(blob_funcs PRIVATE OpenSSL::Crypto)
+  target_link_libraries(blob_funcs OpenSSL::Crypto)
 endif()
 
 add_library(math_funcs MODULE math_funcs.c)
