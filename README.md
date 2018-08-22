@@ -38,6 +38,6 @@ To-Do
 License
 -------
 
-Same as Sqlite3.
+MIT.
 
          

@@ -317,7 +317,7 @@ Other functions
 * CONCAT_WS(sep, string, ...)
 
 Returns a string concatenating its arguments together. If
-`MYSQL_CONCAT()` gest a `NULL` argument, it returns `NULL`. The other
+`MYSQL_CONCAT()` gets a `NULL` argument, it returns `NULL`. The other
 versions just skip those arguments. The `_WS` version puts `sep`
 between strings.
 

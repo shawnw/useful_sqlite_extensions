@@ -12,11 +12,11 @@ number, *i* means an integer. *d/i* means either.
 Scalar Functions
 ================
 
-Trigonmetric
-------------
+Trigonometric
+-------------
 
 * ACOS(d)
-* ACOS(d)
+* ACOSH(d)
 * ASIN(d)
 * ASINH(d)
 * ATAN(d)
@@ -29,8 +29,8 @@ Trigonmetric
 * SINH(d)
 * TAN(d)
 * TANH(d)
-* DEGREES(d)
-* RADIANS(d)
+* DEGREES(d) -- Radians to degrees 
+* RADIANS(d) -- Degrees to radians
 
 Roots, Powers and Logs
 ----------------------

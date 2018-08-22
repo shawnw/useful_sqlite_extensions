@@ -24,7 +24,7 @@
 <ul>
 <li><a href="#introduction">Introduction</a></li>
 <li><a href="#scalar-functions">Scalar Functions</a><ul>
-<li><a href="#trigonmetric">Trigonmetric</a></li>
+<li><a href="#trigonometric">Trigonometric</a></li>
 <li><a href="#roots-powers-and-logs">Roots, Powers and Logs</a></li>
 <li><a href="#rounding">Rounding</a></li>
 <li><a href="#math">Math</a></li>
@@ -38,10 +38,10 @@
 <h1 id="introduction">Introduction</h1>
 <p>Mostly lifted from MySQL and Postgres. Unless otherwise documented, they do the same thing as the C function of the same name. Pass them <code>NULL</code>, get <code>NULL</code> back. Do something that would make them return a <code>NaN</code>, get <code>NULL</code> back. In the arguments, <em>d</em> means a floating point number, <em>i</em> means an integer. <em>d/i</em> means either.</p>
 <h1 id="scalar-functions">Scalar Functions</h1>
-<h2 id="trigonmetric">Trigonmetric</h2>
+<h2 id="trigonometric">Trigonometric</h2>
 <ul>
 <li>ACOS(d)</li>
-<li>ACOS(d)</li>
+<li>ACOSH(d)</li>
 <li>ASIN(d)</li>
 <li>ASINH(d)</li>
 <li>ATAN(d)</li>
@@ -54,8 +54,8 @@
 <li>SINH(d)</li>
 <li>TAN(d)</li>
 <li>TANH(d)</li>
-<li>DEGREES(d)</li>
-<li>RADIANS(d)</li>
+<li>DEGREES(d) – Radians to degrees</li>
+<li>RADIANS(d) – Degrees to radians</li>
 </ul>
 <h2 id="roots-powers-and-logs">Roots, Powers and Logs</h2>
 <ul>
