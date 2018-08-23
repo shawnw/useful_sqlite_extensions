@@ -68,11 +68,17 @@
 <li>SHA2(b, i)</li>
 </ul>
 <p>Returns the <code>i</code>-bit SHA2 digest of its blob argument as a Base16 encoded string. <code>i</code> can be 224, 256, 384, 512, or 0 (Which is treated as 256).</p>
-<h3 id="hmac_sha2">HMAC_SHA2()</h3>
+<h3 id="create_digest">CREATE_DIGEST()</h3>
 <ul>
-<li>HMAC_SHA2(i, secret, b)</li>
+<li>CREATE_DIGEST(algo, b)</li>
 </ul>
-<p>Returns the HMAC of <code>b</code>, using the <code>i</code>-bit SHA2 algorithm, and secret <code>secret</code> as a Base16 encoded string.</p>
+<p>Returns the <code>algo</code> digest of <code>b</code> as a blob. <code>algo</code> can be any message digest supported by OpenSSL, including but not limited to, ‘md5’, ‘rmd160’, ‘sha1’, ‘sha256’, ‘sha512’, etc.</p>
+<p>You can get the complete list with <code>openssl list --digest-commands</code> at a shell.</p>
+<h3 id="hmac">HMAC()</h3>
+<ul>
+<li>HMAC(algo, secret, b)</li>
+</ul>
+<p>Returns the HMAC of <code>b</code>, using the <code>algo</code> message digest algorithm, and secret <code>secret</code> as a Base16 encoded string.</p>
 <h3 id="crc32">CRC32()</h3>
 <ul>
 <li>CRC32(b)</li>

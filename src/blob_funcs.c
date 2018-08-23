@@ -12,7 +12,7 @@
 SQLITE_EXTENSION_INIT1
 
 static char *to_hex(const unsigned char *bytes, int len) {
-  static const char hexdigits[] = "0123456789abcdef";
+  static const char hexdigits[] = "0123456789ABCDEF";
   char *output = sqlite3_malloc(len * 2 + 1);
   if (!output) {
     return NULL;
@@ -84,7 +84,8 @@ static const EVP_MD *get_sha2_algo(int bits) {
 }
 
 static void bf_sha2(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
-  if (sqlite3_value_type(args[1]) == SQLITE_NULL) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
     return;
   }
   const unsigned char *data = sqlite3_value_blob(args[0]);
@@ -106,14 +107,17 @@ static void bf_sha2(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
   }
   if (!EVP_DigestInit_ex(hashctx, algo, NULL)) {
     sqlite3_result_error(ctx, "EVP_DigestInit_ex failed", -1);
+    EVP_MD_CTX_free(hashctx);
     return;
   }
   if (!EVP_DigestUpdate(hashctx, data, datalen)) {
     sqlite3_result_error(ctx, "EVP_DigestUpdate failed", -1);
+    EVP_MD_CTX_free(hashctx);
     return;
   }
   if (!EVP_DigestFinal_ex(hashctx, md, &mdlen)) {
     sqlite3_result_error(ctx, "EVP_DigestFinal_ex failed", -1);
+    EVP_MD_CTX_free(hashctx);
     return;
   }
   EVP_MD_CTX_free(hashctx);
@@ -125,12 +129,58 @@ static void bf_sha2(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
   sqlite3_result_text(ctx, hex, mdlen * 2, sqlite3_free);
 }
 
-static void bf_hmac(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
-  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+static void bf_create_digest(sqlite3_context *ctx,
+                             int nargs __attribute__((unused)),
+                             sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+  const EVP_MD *algo = EVP_get_digestbyname(sqlite3_value_text(args[0]));
+  if (!algo) {
+    return;
+  }
+  const unsigned char *data = sqlite3_value_blob(args[1]);
+  if (!data) {
+    return;
+  }
+  int datalen = sqlite3_value_bytes(args[1]);
+
+  unsigned char md[EVP_MAX_MD_SIZE];
+  unsigned int mdlen;
+  EVP_MD_CTX *hashctx = EVP_MD_CTX_new();
+  if (!hashctx) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  if (!EVP_DigestInit_ex(hashctx, algo, NULL)) {
+    sqlite3_result_error(ctx, "EVP_DigestInit_ex failed", -1);
+    EVP_MD_CTX_free(hashctx);
+    return;
+  }
+  if (!EVP_DigestUpdate(hashctx, data, datalen)) {
+    sqlite3_result_error(ctx, "EVP_DigestUpdate failed", -1);
+    EVP_MD_CTX_free(hashctx);
+    return;
+  }
+  if (!EVP_DigestFinal_ex(hashctx, md, &mdlen)) {
+    sqlite3_result_error(ctx, "EVP_DigestFinal_ex failed", -1);
+    EVP_MD_CTX_free(hashctx);
+    return;
+  }
+  EVP_MD_CTX_free(hashctx);
+  sqlite3_result_blob(ctx, md, mdlen, SQLITE_TRANSIENT);
+}
+
+static void bf_hmac(sqlite3_context *ctx, int nargs __attribute__((unused)),
+                    sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL ||
+      sqlite3_value_type(args[2]) == SQLITE_NULL) {
     return;
   }
 
-  const EVP_MD *algo = get_sha2_algo(sqlite3_value_int(args[0]));
+  const EVP_MD *algo = EVP_get_digestbyname(sqlite3_value_text(args[0]));
   if (!algo) {
     return;
   }
@@ -165,6 +215,11 @@ static void bf_hmac(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
 static void bf_aes_encrypt(sqlite3_context *ctx,
                            int nargs __attribute__((unused)),
                            sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
   const EVP_CIPHER *cipher = EVP_aes_128_ecb();
 
   const unsigned char *key = sqlite3_value_blob(args[1]);
@@ -229,6 +284,11 @@ static void bf_aes_encrypt(sqlite3_context *ctx,
 static void bf_aes_decrypt(sqlite3_context *ctx,
                            int nargs __attribute__((unused)),
                            sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
   const EVP_CIPHER *cipher = EVP_aes_128_ecb();
 
   const unsigned char *key = sqlite3_value_blob(args[1]);
@@ -983,7 +1043,6 @@ static void bf_uuid_to_bin(sqlite3_context *ctx,
   sqlite3_result_blob(ctx, raw, 16, sqlite3_free);
 }
 
-
 #ifdef _WIN32
 __declspec(export)
 #endif
@@ -998,7 +1057,8 @@ __declspec(export)
   } func_table[] = {{"md5", 1, bf_md5},
                     {"sha1", 1, bf_sha1},
                     {"sha2", 2, bf_sha2},
-                    {"hmac_sha2", 3, bf_hmac},
+                    {"create_digest", 2, bf_create_digest},
+                    {"hmac", 3, bf_hmac},
                     {"aes_encrypt", 2, bf_aes_encrypt},
                     {"aes_decrypt", 2, bf_aes_decrypt},
                     {"unhex", 1, bf_unhex},

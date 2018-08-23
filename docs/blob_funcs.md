@@ -61,12 +61,23 @@ Returns the SHA1 digest of its blob argument as a Base16 encoded string.
 Returns the `i`-bit SHA2 digest of its blob argument as a Base16 encoded
 string. `i` can be 224, 256, 384, 512, or 0 (Which is treated as 256).
 
-### HMAC_SHA2()
+### CREATE_DIGEST()
 
-* HMAC_SHA2(i, secret, b)
+* CREATE_DIGEST(algo, b)
 
-Returns the HMAC of `b`, using the `i`-bit SHA2 algorithm, and secret
-`secret` as a Base16 encoded string.
+Returns the `algo` digest of `b` as a blob. `algo` can be any message
+digest supported by OpenSSL, including but not limited to, 'md5', 'rmd160',
+'sha1', 'sha256', 'sha512', etc.
+
+You can get the complete list with `openssl list --digest-commands` at
+a shell.
+
+### HMAC()
+
+* HMAC(algo, secret, b)
+
+Returns the HMAC of `b`, using the `algo` message digest algorithm,
+and secret `secret` as a Base16 encoded string.
 
 ### CRC32()
 
