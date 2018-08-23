@@ -103,7 +103,10 @@ Encryption
 * AES_ENCRYPT(str, key)
 
 Returns a BLOB of `str` encrypted using the **AES-128-ECB** algorithm
-with key `key`. The key should be a 128 bit (16 byte) blob or string.
+with key `key`. The key should be a 128 bit (16 byte) or larger blob
+or string. If longer, only the first 128 bits are used, but this makes
+it easier to use a digest of the actual password as the encryption
+key.
 
 ### AES_DECRYPT()
 

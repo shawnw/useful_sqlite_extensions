@@ -228,7 +228,7 @@ static void bf_aes_encrypt(sqlite3_context *ctx,
   }
   int keylen = sqlite3_value_bytes(args[1]);
 
-  if (keylen != EVP_CIPHER_key_length(cipher)) {
+  if (keylen < EVP_CIPHER_key_length(cipher)) {
     sqlite3_result_error(ctx, "invalid key size", -1);
     return;
   }
@@ -297,7 +297,7 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
   }
   int keylen = sqlite3_value_bytes(args[1]);
 
-  if (keylen != EVP_CIPHER_key_length(cipher)) {
+  if (keylen < EVP_CIPHER_key_length(cipher)) {
     sqlite3_result_error(ctx, "invalid key size", -1);
     return;
   }
