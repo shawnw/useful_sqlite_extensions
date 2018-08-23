@@ -26,13 +26,14 @@
 <li><a href="#formatting">Formatting</a></li>
 <li><a href="#message-digests">Message Digests</a></li>
 <li><a href="#encryption">Encryption</a></li>
+<li><a href="#uuids">UUIDs</a></li>
 </ul></li>
 <li><a href="#aggregate-functions">Aggregate Functions</a></li>
 </ul>
 </nav>
 <h1 id="introduction">Introduction</h1>
 <p>This Sqlite3 extension module adds assorted functions for working with BLOB types (And strings). Requires OpenSSL.</p>
-<p>Largely influenced by MySQL functions in features, names and argument order.</p>
+<p>Largely influenced by MySQL functions in features and names.</p>
 <h1 id="scalar-functions">Scalar Functions</h1>
 <h2 id="formatting">Formatting</h2>
 <h3 id="unhex">UNHEX()</h3>
@@ -67,11 +68,21 @@
 <li>SHA2(b, i)</li>
 </ul>
 <p>Returns the <code>i</code>-bit SHA2 digest of its blob argument as a Base16 encoded string. <code>i</code> can be 224, 256, 384, 512, or 0 (Which is treated as 256).</p>
-<h4 id="hmac_sha2">HMAC_SHA2()</h4>
+<h3 id="hmac_sha2">HMAC_SHA2()</h3>
 <ul>
 <li>HMAC_SHA2(i, secret, b)</li>
 </ul>
 <p>Returns the HMAC of <code>b</code>, using the <code>i</code>-bit SHA2 algorithm, and secret <code>secret</code> as a Base16 encoded string.</p>
+<h3 id="crc32">CRC32()</h3>
+<ul>
+<li>CRC32(b)</li>
+</ul>
+<p>Computes the <a href="https://en.wikipedia.org/wiki/Cyclic_redundancy_check">CRC-32</a> checksum of its blob argument and returns the result as an integer.</p>
+<h3 id="crc32c">CRC32C()</h3>
+<ul>
+<li>CRC32C(b)</li>
+</ul>
+<p>Computes the CRC-32C checksum of its blob argument and returns the result as an integer. Currently only available on x86 processors.</p>
 <h2 id="encryption">Encryption</h2>
 <h3 id="aes_encrypt">AES_ENCRYPT()</h3>
 <ul>
@@ -83,6 +94,22 @@
 <li>AES_DECRYPT(aes, key)</li>
 </ul>
 <p>Returns the decrypted <code>aes</code>, which is a BLOB holding padded, <strong>AES-128-ECB</strong> encrypted data.</p>
+<h2 id="uuids">UUIDs</h2>
+<h3 id="uuid">UUID()</h3>
+<ul>
+<li>UUID()</li>
+</ul>
+<p>Generate a new type 4 (Random) UUID and return it as a blob.</p>
+<h3 id="bin_to_uuid">BIN_TO_UUID()</h3>
+<ul>
+<li>BIN_TO_UUID(b)</li>
+</ul>
+<p>Convert a UUID blob to a string representation.</p>
+<h3 id="uuid_to_bin">UUID_TO_BIN()</h3>
+<ul>
+<li>UUID_TO_BIN(s)</li>
+</ul>
+<p>Convert a UUID string to a blob representation.</p>
 <h1 id="aggregate-functions">Aggregate Functions</h1>
 <p>TODO: Aggregate versions of the digest functions?</p>
 </body>

@@ -6,8 +6,7 @@ Introduction
 This Sqlite3 extension module adds assorted functions for working with
 BLOB types (And strings). Requires OpenSSL.
 
-Largely influenced by MySQL functions in features, names and argument
-order.
+Largely influenced by MySQL functions in features and names.
 
 Scalar Functions
 ================
@@ -62,12 +61,28 @@ Returns the SHA1 digest of its blob argument as a Base16 encoded string.
 Returns the `i`-bit SHA2 digest of its blob argument as a Base16 encoded
 string. `i` can be 224, 256, 384, 512, or 0 (Which is treated as 256).
 
-#### HMAC_SHA2() ####
+### HMAC_SHA2()
 
 * HMAC_SHA2(i, secret, b)
 
 Returns the HMAC of `b`, using the `i`-bit SHA2 algorithm, and secret
 `secret` as a Base16 encoded string.
+
+### CRC32()
+
+* CRC32(b)
+
+Computes the [CRC-32] checksum of its blob argument and returns the
+result as an integer.
+
+[CRC-32]: https://en.wikipedia.org/wiki/Cyclic_redundancy_check
+
+### CRC32C()
+
+* CRC32C(b)
+
+Computes the CRC-32C checksum of its blob argument and returns the
+result as an integer. Currently only available on x86 processors.
 
 Encryption
 ----------
@@ -85,6 +100,27 @@ with key `key`. The key should be a 128 bit (16 byte) blob or string.
 
 Returns the decrypted `aes`, which is a BLOB holding padded,
 **AES-128-ECB** encrypted data.
+
+UUIDs
+-----
+
+### UUID()
+
+* UUID()
+
+Generate a new type 4 (Random) UUID and return it as a blob.
+
+### BIN_TO_UUID()
+
+* BIN\_TO\_UUID(b)
+
+Convert a UUID blob to a string representation.
+
+### UUID_TO_BIN()
+
+* UUID\_TO\_BIN(s)
+
+Convert a UUID string to a blob representation.
 
 Aggregate Functions
 ===================

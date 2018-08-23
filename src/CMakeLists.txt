@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 project("Useful Sqlite3 Extensions" LANGUAGES C VERSION 0.2)
 
 include(FindPackageHandleStandardArgs)
+set(CMAKE_THREAD_PREFER_PTHREAD 1)
+find_package(Threads)
 
 find_package(ICU COMPONENTS data uc i18n)
 if(ICU_FOUND)
@@ -19,8 +21,8 @@ if(OpenSSL_FOUND)
   add_library(blob_funcs MODULE blob_funcs.c)
   set_target_properties(blob_funcs PROPERTIES C_STANDARD 99
     C_STANDARD_REQUIRED ON)
-  target_include_directories(blob_funcs PRIVATE OpenSSL::Crypto)
-  target_link_libraries(blob_funcs OpenSSL::Crypto)
+  target_include_directories(blob_funcs PRIVATE OpenSSL::Crypto ${PROJECT_BINARY_DIR})
+  target_link_libraries(blob_funcs OpenSSL::Crypto Threads::Threads)
 endif()
 
 find_library(PCRE2_8 pcre2-8 DOC "UTF-8 version of PCRE2")
