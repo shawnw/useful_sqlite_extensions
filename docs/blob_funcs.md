@@ -115,6 +115,28 @@ key.
 Returns the decrypted `aes`, which is a BLOB holding padded,
 **AES-128-ECB** encrypted data.
 
+Compression
+-----------
+
+These functions require the zlib library and work with arbitrary blobs
+of data.
+
+For compressing non-ASCII text, consider the Unicode-specific
+compression functions in the `string_funcs` module.
+
+### COMPRESS()
+
+* COMPRESS(b)
+
+Returns its blob argument as a zlib-compressed blob.
+
+### UNCOMPRESS()
+
+* UNCOMPRESS(b)
+
+Returns its decompressed argument as a blob. `b` must be a bloob that
+was compressed with `COMPRESS()`.
+
 UUIDs
 -----
 

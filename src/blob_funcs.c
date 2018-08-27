@@ -1,4 +1,3 @@
-
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -8,6 +7,11 @@
 #include <string.h>
 
 #include "config.h"
+
+#ifdef ZLIB_FOUND
+#include <arpa/inet.h>
+#include <zlib.h>
+#endif
 
 SQLITE_EXTENSION_INIT1
 
@@ -586,7 +590,7 @@ static uint32_t crc32_tab[] = {
     0x54de5729, 0x23d967bf, 0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94,
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d};
 
-static uint32_t crc32(uint32_t crc, const void *buf, size_t size) {
+static uint32_t my_crc32(uint32_t crc, const void *buf, size_t size) {
   const uint8_t *p;
 
   p = buf;
@@ -608,7 +612,7 @@ static void bf_crc32(sqlite3_context *ctx, int nargs __attribute__((unused)),
     return;
   }
   size_t blen = sqlite3_value_bytes(args[0]);
-  sqlite3_result_int64(ctx, crc32(0, blob, blen));
+  sqlite3_result_int64(ctx, my_crc32(0, blob, blen));
 }
 
 #if defined(__GNUC__) && (defined(__x86_64) || defined(__i386)) &&             \
@@ -1043,6 +1047,73 @@ static void bf_uuid_to_bin(sqlite3_context *ctx,
   sqlite3_result_blob(ctx, raw, 16, sqlite3_free);
 }
 
+#ifdef ZLIB_FOUND
+static void bf_compress(sqlite3_context *ctx, int nargs __attribute__((unused)),
+                        sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+  const unsigned char *raw = sqlite3_value_blob(args[0]);
+  if (!raw) {
+    return;
+  }
+  uint32_t rsize = sqlite3_value_bytes(args[0]);
+  uLong csize = compressBound(rsize);
+  unsigned char *c = sqlite3_malloc(csize + 4);
+  if (!c) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  int r = compress(c + 4, &csize, raw, rsize);
+  if (r == Z_MEM_ERROR) {
+    sqlite3_free(c);
+    sqlite3_result_error_nomem(ctx);
+  } else if (r == Z_BUF_ERROR) {
+    // Shouldn't happen
+    sqlite3_free(c);
+    sqlite3_result_error(ctx, "compression error", -1);
+  } else if (r == Z_OK) {
+    rsize = htonl(rsize);
+    memcpy(c, &rsize, 4);
+    sqlite3_result_blob(ctx, c, csize + 4, sqlite3_free);
+  }
+}
+
+static void bf_uncompress(sqlite3_context *ctx,
+                          int nargs __attribute__((unused)),
+                          sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) != SQLITE_BLOB) {
+    return;
+  }
+  const unsigned char *c = sqlite3_value_blob(args[0]);
+  if (!c) {
+    return;
+  }
+  int csize = sqlite3_value_bytes(args[0]) - 4;
+  uint32_t tmp;
+  memcpy(&tmp, c, 4);
+  uLong rsize = ntohl(tmp);
+  unsigned char *raw = sqlite3_malloc(rsize);
+  if (!raw) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  int r = uncompress(raw, &rsize, c + 4, csize);
+  if (r == Z_MEM_ERROR) {
+    sqlite3_free(raw);
+    sqlite3_result_error_nomem(ctx);
+  } else if (r == Z_DATA_ERROR) {
+    sqlite3_free(raw);
+  } else if (r == Z_BUF_ERROR) {
+    // Shouldn't happen
+    sqlite3_free(raw);
+    sqlite3_result_error(ctx, "uncompression error", -1);
+  } else if (r == Z_OK) {
+    sqlite3_result_blob(ctx, raw, rsize, sqlite3_free);
+  }
+}
+#endif
+
 #ifdef _WIN32
 __declspec(export)
 #endif
@@ -1071,6 +1142,10 @@ __declspec(export)
                     {"uuid", 0, bf_uuid},
                     {"bin_to_uuid", 1, bf_bin_to_uuid},
                     {"uuid_to_bin", 1, bf_uuid_to_bin},
+#ifdef ZLIB_FOUND
+                    {"compress", 1, bf_compress},
+                    {"uncompress", 1, bf_uncompress},
+#endif
                     {NULL, -1, NULL}};
 
   for (int n = 0; func_table[n].name; n += 1) {

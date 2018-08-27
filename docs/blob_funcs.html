@@ -26,6 +26,7 @@
 <li><a href="#formatting">Formatting</a></li>
 <li><a href="#message-digests">Message Digests</a></li>
 <li><a href="#encryption">Encryption</a></li>
+<li><a href="#compression">Compression</a></li>
 <li><a href="#uuids">UUIDs</a></li>
 </ul></li>
 <li><a href="#aggregate-functions">Aggregate Functions</a></li>
@@ -100,6 +101,19 @@
 <li>AES_DECRYPT(aes, key)</li>
 </ul>
 <p>Returns the decrypted <code>aes</code>, which is a BLOB holding padded, <strong>AES-128-ECB</strong> encrypted data.</p>
+<h2 id="compression">Compression</h2>
+<p>These functions require the zlib library and work with arbitrary blobs of data.</p>
+<p>For compressing non-ASCII text, consider the Unicode-specific compression functions in the <code>string_funcs</code> module.</p>
+<h3 id="compress">COMPRESS()</h3>
+<ul>
+<li>COMPRESS(b)</li>
+</ul>
+<p>Returns its blob argument as a zlib-compressed blob.</p>
+<h3 id="uncompress">UNCOMPRESS()</h3>
+<ul>
+<li>UNCOMPRESS(b)</li>
+</ul>
+<p>Returns its decompressed argument as a blob. <code>b</code> must be a bloob that was compressed with <code>COMPRESS()</code>.</p>
 <h2 id="uuids">UUIDs</h2>
 <h3 id="uuid">UUID()</h3>
 <ul>
