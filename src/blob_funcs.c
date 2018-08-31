@@ -779,6 +779,17 @@ static void bf_hmac(sqlite3_context *ctx, int nargs __attribute__((unused)),
   sqlite3_result_text(ctx, hex, md_len * 2, sqlite3_free);
 }
 
+// make a key from a 16 byte or greater blob. key must point to 16
+// bytes of space.
+static void make_aes_key(unsigned char *restrict key,
+                         const unsigned char *restrict raw, int len) {
+  assert(len >= 16);
+  memset(key, '\0', 16);
+  for (int i = 0, j = 0; i < len; i += 1, j = ((j + 1) % 16)) {
+    key[j] ^= raw[i];
+  }
+}
+
 static void bf_aes_encrypt(sqlite3_context *ctx,
                            int nargs __attribute__((unused)),
                            sqlite3_value **args) {
@@ -789,13 +800,13 @@ static void bf_aes_encrypt(sqlite3_context *ctx,
 
   const EVP_CIPHER *cipher = EVP_aes_128_ecb();
 
-  const unsigned char *key = sqlite3_value_blob(args[1]);
-  if (!key) {
+  const unsigned char *rawkey = sqlite3_value_blob(args[1]);
+  if (!rawkey) {
     return;
   }
-  int keylen = sqlite3_value_bytes(args[1]);
+  int rawkeylen = sqlite3_value_bytes(args[1]);
 
-  if (keylen < EVP_CIPHER_key_length(cipher)) {
+  if (rawkeylen < EVP_CIPHER_key_length(cipher)) {
     sqlite3_result_error(ctx, "invalid key size", -1);
     return;
   }
@@ -811,6 +822,9 @@ static void bf_aes_encrypt(sqlite3_context *ctx,
     sqlite3_result_error_nomem(ctx);
     return;
   }
+
+  unsigned char key[16];
+  make_aes_key(key, rawkey, rawkeylen);
 
   if (!EVP_EncryptInit_ex(aesctx, cipher, NULL, key, NULL)) {
     sqlite3_result_error(ctx, "EVP_EncryptInit_ex failed", -1);
@@ -858,13 +872,13 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
 
   const EVP_CIPHER *cipher = EVP_aes_128_ecb();
 
-  const unsigned char *key = sqlite3_value_blob(args[1]);
-  if (!key) {
+  const unsigned char *rawkey = sqlite3_value_blob(args[1]);
+  if (!rawkey) {
     return;
   }
-  int keylen = sqlite3_value_bytes(args[1]);
+  int rawkeylen = sqlite3_value_bytes(args[1]);
 
-  if (keylen < EVP_CIPHER_key_length(cipher)) {
+  if (rawkeylen < EVP_CIPHER_key_length(cipher)) {
     sqlite3_result_error(ctx, "invalid key size", -1);
     return;
   }
@@ -880,6 +894,9 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
     sqlite3_result_error_nomem(ctx);
     return;
   }
+
+  unsigned char key[16];
+  make_aes_key(key, rawkey, rawkeylen);
 
   if (!EVP_DecryptInit_ex(aesctx, cipher, NULL, key, NULL)) {
     sqlite3_result_error(ctx, "EVP_DecryptInit_ex failed", -1);
@@ -898,7 +915,7 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
   int written = plain_len - blocklen;
   EVP_CIPHER_CTX_set_padding(aesctx, 1);
   if (!EVP_DecryptUpdate(aesctx, plain, &written, data, datalen)) {
-    sqlite3_result_error(ctx, "EVP_DecryptUpdate failed", -1);
+    //sqlite3_result_error(ctx, "EVP_DecryptUpdate failed", -1);
     sqlite3_free(plain);
     EVP_CIPHER_CTX_free(aesctx);
     return;
@@ -907,7 +924,7 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
   plain_len = written;
   written = blocklen;
   if (!EVP_DecryptFinal_ex(aesctx, plain + plain_len, &written)) {
-    sqlite3_result_error(ctx, "EVP_DecryptFinal_ex failed", -1);
+    //sqlite3_result_error(ctx, "EVP_DecryptFinal_ex failed", -1);
     sqlite3_free(plain);
     EVP_CIPHER_CTX_free(aesctx);
     return;
