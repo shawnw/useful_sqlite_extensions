@@ -31,6 +31,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unicode/ucol.h>
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
+#include <unicode/uspoof.h>
 #include <unicode/ustring.h>
 #include <unicode/utf16.h>
 #include <unicode/uversion.h>
@@ -1704,6 +1705,91 @@ void icuCharName16(sqlite3_context *p, int argc __attribute__((unused)),
   }
 }
 
+static void icuFreeSpoof(void *v) {
+  USpoofChecker *s = v;
+  uspoof_close(s);
+}
+
+static void icuConfusable8(sqlite3_context *ctx,
+                           int nargs __attribute__((unused)),
+                           sqlite3_value **args) {
+  USpoofChecker *check = sqlite3_get_auxdata(ctx, 0);
+  UErrorCode err = U_ZERO_ERROR;
+
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  if (!check) {
+    check = uspoof_open(&err);
+    if (U_FAILURE(err)) {
+      icuFunctionError(ctx, "uspoof_open", err);
+      return;
+    }
+    uspoof_setChecks(check, USPOOF_CONFUSABLE, &err);
+    if (U_FAILURE(err)) {
+      icuFunctionError(ctx, "uspoof_setChecks", err);
+      return;
+    }
+    sqlite3_set_auxdata(ctx, 0, check, icuFreeSpoof);
+  }
+
+  const char *s1 = (const char *)sqlite3_value_text(args[0]);
+  const char *s2 = (const char *)sqlite3_value_text(args[1]);
+  if (!s1 || !s2) {
+    return;
+  }
+  int len1 = sqlite3_value_bytes(args[0]);
+  int len2 = sqlite3_value_bytes(args[1]);
+  int r = uspoof_areConfusableUTF8(check, s1, len1, s2, len2, &err);
+  if (U_FAILURE(err)) {
+    icuFunctionError(ctx, "uspoof_areConfusableUTF8", err);
+  } else {
+    sqlite3_result_int(ctx, r > 0);
+  }
+}
+
+static void icuConfusable16(sqlite3_context *ctx,
+                            int nargs __attribute__((unused)),
+                            sqlite3_value **args) {
+  USpoofChecker *check = sqlite3_get_auxdata(ctx, 0);
+  UErrorCode err = U_ZERO_ERROR;
+
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  if (!check) {
+    check = uspoof_open(&err);
+    if (U_FAILURE(err)) {
+      icuFunctionError(ctx, "uspoof_open", err);
+      return;
+    }
+    uspoof_setChecks(check, USPOOF_CONFUSABLE, &err);
+    if (U_FAILURE(err)) {
+      icuFunctionError(ctx, "uspoof_setChecks", err);
+      return;
+    }
+    sqlite3_set_auxdata(ctx, 0, check, icuFreeSpoof);
+  }
+
+  const UChar *s1 = sqlite3_value_text16(args[0]);
+  const UChar *s2 = sqlite3_value_text16(args[1]);
+  if (!s1 || !s2) {
+    return;
+  }
+  int len1 = sqlite3_value_bytes16(args[0]) / 2;
+  int len2 = sqlite3_value_bytes16(args[1]) / 2;
+  int r = uspoof_areConfusable(check, s1, len1, s2, len2, &err);
+  if (U_FAILURE(err)) {
+    icuFunctionError(ctx, "uspoof_areConfusable", err);
+  } else {
+    sqlite3_result_int(ctx, r > 0);
+  }
+}
+
 void icuStripAccentsFunc(sqlite3_context *context, int argc,
                          sqlite3_value **argv);
 
@@ -1816,8 +1902,11 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
     {"normalize", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuNormFunc16},
     {"repeat", 3, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuRepeatFunc16},
 
-    {"char_name", 1, SQLITE_UTF8, 0, icuCharName8},
-    {"char_name", 1, SQLITE_UTF16, 0, icuCharName16},
+    {"char_name", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, icuCharName8},
+    {"char_name", 1, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuCharName16},
+
+    {"confusable", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, icuConfusable8},
+    {"confusable", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuConfusable16},
 
   };
   int rc = SQLITE_OK;

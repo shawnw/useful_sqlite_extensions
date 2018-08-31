@@ -55,6 +55,16 @@ number of *code points*.
 
 [extended grapheme clusters]: http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
 
+### CONFUSABLE()
+
+* CONFUSABLE(string1, string2)
+
+Returns 1 if its two arguments are the same or can easily be visually
+mistaken to be the same, 0 if they're distinct.
+
+(If only one of the arguments is a string literal or bound to a
+placeholder, it should be the first one.)
+
 Case Mapping
 ------------
 
@@ -190,7 +200,7 @@ The `_WS` version intersperses `sep` between strings.
 * NFKD(string, ...)
 * NFKD_WS(sep, string, ...)
 
-Concatenates its non-NULL arguments together and returns the reuslt in
+Concatenates its non-NULL arguments together and returns the result in
 NFKD. With one argument is equivalent to `NORMALIZE(string, 'NFKD')`.
 
 The `_WS` version intersperses `sep` between strings.
