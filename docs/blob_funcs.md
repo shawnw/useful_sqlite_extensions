@@ -56,10 +56,24 @@ Returns the SHA1 digest of its blob argument as a Base16 encoded string.
 
 ### SHA2() ####
 
+* SHA2(b)
 * SHA2(b, i)
 
-Returns the `i`-bit SHA2 digest of its blob argument as a Base16 encoded
-string. `i` can be 224, 256, 384, 512, or 0 (Which is treated as 256).
+Returns the `i`-bit SHA2 digest of its blob argument as a Base16
+encoded string. `i` can be 224, 256, 384, 512, or 0 (Which is treated
+as 256). Defaults to 256 if ommitted.
+
+### SHA3() ###
+
+* SHA3(b)
+* SHA3(b, i)
+
+Returns the `i`-bit SHA3 digest of its blob argument as a Base16
+encoded string.  `i` can be 224, 256, 384, or 512. Defaults to 256 if
+omitted.
+
+Implementation taken from the `shathree` extension in the sqlite3
+source tree. This version returns a Base16 string, not blob, though.
 
 ### CREATE_DIGEST()
 
@@ -128,13 +142,18 @@ compression functions in the `string_funcs` module.
 
 * COMPRESS(b)
 
-Returns its blob argument as a zlib-compressed blob.
+Returns its blob argument as a zlib-compressed blob. The first four
+bytes are the length of the uncompressed text, in big-endian
+format. Note: This makes it incompatible with the [compress module] in
+the sqlite source tree, which uses a variable-width encoding.
+
+[compress module]: https://www3.sqlite.org/cgi/src/artifact/dd4f8a6d0baccff3
 
 ### UNCOMPRESS()
 
 * UNCOMPRESS(b)
 
-Returns its decompressed argument as a blob. `b` must be a bloob that
+Returns its decompressed argument as a blob. `b` must be a blob that
 was compressed with `COMPRESS()`.
 
 UUIDs
