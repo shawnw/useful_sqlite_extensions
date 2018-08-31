@@ -31,9 +31,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unicode/ucol.h>
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
+#include <unicode/uscript.h>
 #include <unicode/uspoof.h>
 #include <unicode/ustring.h>
 #include <unicode/utf16.h>
+#include <unicode/utf8.h>
 #include <unicode/uversion.h>
 
 #include <sqlite3ext.h>
@@ -1665,11 +1667,15 @@ static void char_name(sqlite3_context *ctx, UChar32 c) {
   UErrorCode err = U_ZERO_ERROR;
 
   name = sqlite3_malloc(128);
+  if (!name) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
   int len = u_charName(c, U_UNICODE_CHAR_NAME, name, 128, &err);
   if (U_SUCCESS(err)) {
     sqlite3_result_text(ctx, name, len, sqlite3_free);
   } else {
-    icuFunctionError(ctx, "u_charName", err);
+    sqlite3_free(name);
   }
 }
 
@@ -1678,13 +1684,17 @@ void icuCharName8(sqlite3_context *p, int argc __attribute__((unused)),
   assert(argc == 1);
   UChar32 c;
 
-  const unsigned char *utf8 = sqlite3_value_text(argv[0]);
-
-  U8_GET(utf8, 0, 0, -1, c);
-
-  if (c < 0) {
-    sqlite3_result_error(p, "invalid utf-8 code point", -1);
+  if (sqlite3_value_type(argv[0]) == SQLITE_INTEGER) {
+    c = sqlite3_value_int(argv[0]);
   } else {
+    const unsigned char *utf8 = sqlite3_value_text(argv[0]);
+    if (!utf8) {
+      return;
+    }
+    U8_GET(utf8, 0, 0, -1, c);
+  }
+
+  if (c > 0) {
     char_name(p, c);
   }
 }
@@ -1694,14 +1704,70 @@ void icuCharName16(sqlite3_context *p, int argc __attribute__((unused)),
   assert(argc == 1);
   UChar32 c;
 
-  const UChar *utf16 = sqlite3_value_text16(argv[0]);
-
-  U16_GET(utf16, 0, 0, -1, c);
-
-  if (c < 0) {
-    sqlite3_result_error(p, "invalid utf-16 code point", -1);
+  if (sqlite3_value_type(argv[0]) == SQLITE_INTEGER) {
+    c = sqlite3_value_int(argv[0]);
   } else {
+    const UChar *utf16 = sqlite3_value_text16(argv[0]);
+    if (!utf16) {
+      return;
+    }
+    U16_GET(utf16, 0, 0, -1, c);
+  }
+
+  if (c > 0) {
     char_name(p, c);
+  }
+}
+
+static void script_name(sqlite3_context *ctx, UChar32 c) {
+  UErrorCode err = U_ZERO_ERROR;
+
+  UScriptCode s = uscript_getScript(c, &err);
+  if (U_FAILURE(err)) {
+    return;
+  }
+
+  const char *name = uscript_getName(s);
+  if (name) {
+    sqlite3_result_text(ctx, name, -1, SQLITE_STATIC);
+  }
+}
+
+void icuScriptName8(sqlite3_context *p, int argc __attribute__((unused)),
+                    sqlite3_value **argv) {
+  UChar32 c;
+
+  if (sqlite3_value_type(argv[0]) == SQLITE_INTEGER) {
+    c = sqlite3_value_int(argv[0]);
+  } else {
+    const unsigned char *utf8 = sqlite3_value_text(argv[0]);
+    if (!utf8) {
+      return;
+    }
+    U8_GET(utf8, 0, 0, -1, c);
+  }
+
+  if (c > 0) {
+    script_name(p, c);
+  }
+}
+
+void icuScriptName16(sqlite3_context *p, int argc __attribute__((unused)),
+                     sqlite3_value **argv) {
+  UChar32 c;
+
+  if (sqlite3_value_type(argv[0]) == SQLITE_INTEGER) {
+    c = sqlite3_value_int(argv[0]);
+  } else {
+    const UChar *utf16 = sqlite3_value_text16(argv[0]);
+    if (!utf16) {
+      return;
+    }
+    U16_GET(utf16, 0, 0, -1, c);
+  }
+
+  if (c > 0) {
+    script_name(p, c);
   }
 }
 
@@ -1904,6 +1970,8 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
 
     {"char_name", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, icuCharName8},
     {"char_name", 1, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuCharName16},
+    {"script_name", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, icuScriptName8},
+    {"script_name", 1, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuScriptName16},
 
     {"confusable", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, icuConfusable8},
     {"confusable", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuConfusable16},

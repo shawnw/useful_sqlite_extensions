@@ -43,7 +43,15 @@ Returns the version of Unicode understood by ICU.
 
 * CHAR_NAME(c)
 
-Returns the Unicode name of the first codepoint in `c`.
+Returns the Unicode name of the first codepoint in `c`, which can be
+an integer or string.
+
+### SCRIPT_NAME()
+
+* SCRIPT_NAME(c)
+
+Returns the Unicode script of the first codepoint in `c`, which can be
+an integer or string.
 
 ### GCLENGTH()
 
