@@ -63,16 +63,6 @@ number of *code points*.
 
 [extended grapheme clusters]: http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
 
-### CONFUSABLE()
-
-* CONFUSABLE(string1, string2)
-
-Returns 1 if its two arguments are the same or can easily be visually
-mistaken to be the same, 0 if they're distinct.
-
-(If only one of the arguments is a string literal or bound to a
-placeholder, it should be the first one.)
-
 Case Mapping
 ------------
 
@@ -347,6 +337,16 @@ between strings.
 Returns a new string created by repeating `string` `count` times. If a
 third argument is given, it's the normalization form to use for the
 result.
+
+### CONFUSABLE()
+
+* CONFUSABLE(string1, string2)
+
+Returns 1 if its two arguments are the same or can easily be visually
+mistaken to be the same, 0 if they're distinct.
+
+(If only one of the arguments is a string literal or bound to a
+placeholder, it should be the first one.)
 
 Collations
 ==========

@@ -70,12 +70,6 @@
 <li>GCLENGTH(string)</li>
 </ul>
 <p>Returns the number of <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a> in <code>string</code>. This will be less than or equal to <code>LENGTH(string)</code>, which returns the number of <em>code points</em>.</p>
-<h3 id="confusable">CONFUSABLE()</h3>
-<ul>
-<li>CONFUSABLE(string1, string2)</li>
-</ul>
-<p>Returns 1 if its two arguments are the same or can easily be visually mistaken to be the same, 0 if they’re distinct.</p>
-<p>(If only one of the arguments is a string literal or bound to a placeholder, it should be the first one.)</p>
 <h2 id="case-mapping">Case Mapping</h2>
 <h3 id="upper">UPPER()</h3>
 <ul>
@@ -229,6 +223,12 @@
 <li>REPEAT(string, count, form)</li>
 </ul>
 <p>Returns a new string created by repeating <code>string</code> <code>count</code> times. If a third argument is given, it’s the normalization form to use for the result.</p>
+<h3 id="confusable">CONFUSABLE()</h3>
+<ul>
+<li>CONFUSABLE(string1, string2)</li>
+</ul>
+<p>Returns 1 if its two arguments are the same or can easily be visually mistaken to be the same, 0 if they’re distinct.</p>
+<p>(If only one of the arguments is a string literal or bound to a placeholder, it should be the first one.)</p>
 <h1 id="collations">Collations</h1>
 <p>For when <code>BINARY</code> and <code>NOCASE</code> aren’t good enough.</p>
 <h2 id="functions">Functions</h2>
