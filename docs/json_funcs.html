@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Extra JSON functions</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">Extra JSON functions</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#functions">Functions</a></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p>This Sqlite3 extension adds some extra JSON handling functions to supplement the standard <a href="https://www.sqlite.org/json1.html">JSON1</a> extension. They’re mostly inspired by <a href="https://dev.mysql.com/doc/refman/8.0/en/json-function-reference.html">MySQL JSON functions</a>.</p>
+<h1 id="functions">Functions</h1>
+<h3 id="json_equal">JSON_EQUAL()</h3>
+<ul>
+<li>JSON_EQUAL(json, json)</li>
+</ul>
+<p>Returns 1 if the two JSON values are equivalent, 0 if not.</p>
+<h3 id="json_length">JSON_LENGTH()</h3>
+<ul>
+<li>JSON_LENGTH(json)</li>
+<li>JSON_LENGTH(json, path)</li>
+</ul>
+<p>If <code>json</code> (Either the entire object, or the part of it at <code>path</code>) is an object or array, return the number of elements in it. Otherwise, returns 1.</p>
+<h3 id="json_pretty">JSON_PRETTY()</h3>
+<ul>
+<li>JSON_PRETTY(json)</li>
+</ul>
+<p>Returns <code>json</code>, pretty-printed for human readability. The exact format depends on the version of sqlite3 that the extension was compiled against; 3.24 and newer produce MySQL style output, older produces <a href="https://github.com/DaveGamble/cJSON">cJSON</a> style.</p>
+</body>
+</html>

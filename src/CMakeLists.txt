@@ -60,4 +60,9 @@ set_target_properties(nss_tables PROPERTIES C_STANDARD 99
   C_STANDARD_REQUIRED ON)
 target_compile_options(nss_tables PRIVATE -Wall -Wextra)
 
+add_library(json_funcs MODULE json_funcs.c cJSON.c)
+set_target_properties(json_funcs PROPERTIES C_STANDARD 99
+  C_STANDARD_REQUIRED ON)
+target_compile_options(json_funcs PRIVATE -Wall -Wextra)
+
 configure_file(config.h.in config.h)

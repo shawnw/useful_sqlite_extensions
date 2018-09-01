@@ -11,7 +11,9 @@ in the *docs/* directory for details on individual extensions.
 * nss_tables - Interfaces to */etc/passwd* etc.
 * blob_funcs - Assorted functions that act on blobs.
 * pcre2_funcs - Regular expressions using PCRE2
+* json_funcs - Extra JSON functions.
 * bloom_filter1 - Bloom filter indexes.
+
 
 Build Instructions
 ------------------
