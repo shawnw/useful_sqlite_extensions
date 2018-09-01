@@ -119,8 +119,11 @@ static const EVP_MD *get_sha2_algo(int bits) {
 }
 
 static void bf_sha2(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
-  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
-      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+  if (nargs == 2 && sqlite3_value_type(args[1]) == SQLITE_NULL) {
     return;
   }
   const unsigned char *data = sqlite3_value_blob(args[0]);
@@ -915,7 +918,7 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
   int written = plain_len - blocklen;
   EVP_CIPHER_CTX_set_padding(aesctx, 1);
   if (!EVP_DecryptUpdate(aesctx, plain, &written, data, datalen)) {
-    //sqlite3_result_error(ctx, "EVP_DecryptUpdate failed", -1);
+    // sqlite3_result_error(ctx, "EVP_DecryptUpdate failed", -1);
     sqlite3_free(plain);
     EVP_CIPHER_CTX_free(aesctx);
     return;
@@ -924,7 +927,7 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
   plain_len = written;
   written = blocklen;
   if (!EVP_DecryptFinal_ex(aesctx, plain + plain_len, &written)) {
-    //sqlite3_result_error(ctx, "EVP_DecryptFinal_ex failed", -1);
+    // sqlite3_result_error(ctx, "EVP_DecryptFinal_ex failed", -1);
     sqlite3_free(plain);
     EVP_CIPHER_CTX_free(aesctx);
     return;
