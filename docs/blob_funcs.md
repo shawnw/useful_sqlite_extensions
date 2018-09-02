@@ -175,6 +175,13 @@ Convert a UUID blob to a string representation.
 
 Convert a UUID string to a blob representation.
 
+### IS_UUID()
+
+* IS_UUID(s)
+
+Returns 1 if `s` is a valid string representation of a UUID, 0 if not,
+and NULL if NULL.
+
 Aggregate Functions
 ===================
 

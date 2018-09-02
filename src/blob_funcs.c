@@ -21,6 +21,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include <ctype.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -1534,6 +1535,38 @@ static void bf_uuid_to_bin(sqlite3_context *ctx,
   sqlite3_result_blob(ctx, raw, 16, sqlite3_free);
 }
 
+static void bf_is_uuid(sqlite3_context *ctx, int nargs __attribute__((unused)),
+                       sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+
+  const unsigned char *uuid = sqlite3_value_text(args[0]);
+  if (!uuid) {
+    return;
+  }
+  int len = sqlite3_value_bytes(args[0]);
+  if (len != 36) {
+    sqlite3_result_int(ctx, 0);
+    return;
+  }
+
+  static const int dashes[36] = {[8] = 1, [13] = 1, [18] = 1, [23] = 1};
+  int valid = 0;
+  for (int i = 0; i < len; i += 1) {
+    if (dashes[i]) {
+      if (uuid[i] != '-') {
+        goto done;
+      }
+    } else if (!isxdigit(uuid[i])) {
+      goto done;
+    }
+  }
+  valid = 1;
+done:
+  sqlite3_result_int(ctx, valid);
+}
+
 #ifdef ZLIB_FOUND
 static void bf_compress(sqlite3_context *ctx, int nargs __attribute__((unused)),
                         sqlite3_value **args) {
@@ -1629,6 +1662,7 @@ __declspec(export)
                     {"crc32c", 1, bf_crc32c},
 #endif
                     {"uuid", 0, bf_uuid},
+                    {"is_uuid", 1, bf_is_uuid},
                     {"bin_to_uuid", 1, bf_bin_to_uuid},
                     {"uuid_to_bin", 1, bf_uuid_to_bin},
 #ifdef ZLIB_FOUND
