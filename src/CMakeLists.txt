@@ -22,6 +22,7 @@ if(OpenSSL_FOUND)
   add_library(blob_funcs MODULE blob_funcs.c)
   set_target_properties(blob_funcs PROPERTIES C_STANDARD 99
     C_STANDARD_REQUIRED ON)
+  target_compile_options(blob_funcs PRIVATE -Wall -Wextra)  
   target_include_directories(blob_funcs PRIVATE OpenSSL::Crypto ZLIB::ZLIB ${PROJECT_BINARY_DIR})
   target_link_libraries(blob_funcs OpenSSL::Crypto ZLIB::ZLIB Threads::Threads)
 endif()

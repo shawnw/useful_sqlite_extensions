@@ -707,7 +707,8 @@ static void bf_create_digest(sqlite3_context *ctx,
       sqlite3_value_type(args[1]) == SQLITE_NULL) {
     return;
   }
-  const EVP_MD *algo = EVP_get_digestbyname(sqlite3_value_text(args[0]));
+  const EVP_MD *algo =
+      EVP_get_digestbyname((const char *)sqlite3_value_text(args[0]));
   if (!algo) {
     return;
   }
@@ -751,7 +752,8 @@ static void bf_hmac(sqlite3_context *ctx, int nargs __attribute__((unused)),
     return;
   }
 
-  const EVP_MD *algo = EVP_get_digestbyname(sqlite3_value_text(args[0]));
+  const EVP_MD *algo =
+      EVP_get_digestbyname((const char *)sqlite3_value_text(args[0]));
   if (!algo) {
     return;
   }
@@ -938,7 +940,7 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
   sqlite3_result_blob(ctx, plain, plain_len, sqlite3_free);
 }
 
-static unsigned hexchar_to_int(unsigned char c) {
+static unsigned int hexchar_to_int(unsigned char c) {
   switch (c) {
   case '0':
   case '1':
@@ -986,7 +988,7 @@ static void bf_unhex(sqlite3_context *ctx, int nargs __attribute__((unused)),
     return;
   }
 
-  if (strspn(hex, "0123456789ABCDEFabcdef") != (size_t)hexlen) {
+  if (strspn((const char *)hex, "0123456789ABCDEFabcdef") != (size_t)hexlen) {
     return;
   }
 
@@ -1066,7 +1068,7 @@ static void bf_from_base64(sqlite3_context *ctx,
   unsigned char *result = NULL;
   int totlen = 0;
   while ((r = BIO_read(bio, buffer, sizeof buffer)) > 0) {
-    char *newresult = sqlite3_realloc(result, totlen + r);
+    unsigned char *newresult = sqlite3_realloc(result, totlen + r);
     if (!newresult) {
       sqlite3_result_error_nomem(ctx);
       sqlite3_free(result);
@@ -1522,7 +1524,7 @@ static void bf_uuid_to_bin(sqlite3_context *ctx,
     sqlite3_result_error_nomem(ctx);
     return;
   }
-  if (sscanf(uuid,
+  if (sscanf((const char *)uuid,
              "%2hhx%2hhx%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-%2hhx%2hhx-"
              "%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx",
              raw, raw + 1, raw + 2, raw + 3, raw + 4, raw + 5, raw + 6, raw + 7,
