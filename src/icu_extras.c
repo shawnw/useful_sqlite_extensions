@@ -1,3 +1,4 @@
+#include <stdio.h>
 /*
 Copyright 2018 Shawn Wagner
 
@@ -1856,6 +1857,139 @@ static void icuConfusable16(sqlite3_context *ctx,
   }
 }
 
+static void icu_free_conv(void *v) {
+  UConverter *cnv = v;
+  ucnv_close(cnv);
+}
+
+void icuConvertTo(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
+  UErrorCode err = U_ZERO_ERROR;
+
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  if (nargs == 3 && sqlite3_value_type(args[2]) == SQLITE_NULL) {
+    return;
+  }
+
+  UConverter *cnv = sqlite3_get_auxdata(ctx, 1);
+  if (!cnv) {
+    const char *cp = (const char *)sqlite3_value_text(args[1]);
+    if (!cp) {
+      return;
+    }
+    cnv = ucnv_open(cp, &err);
+    if (U_FAILURE(err)) {
+      icuFunctionError(ctx, "ucnv_open", err);
+      return;
+    }
+    sqlite3_set_auxdata(ctx, 1, cnv, icu_free_conv);
+  }
+
+  if (nargs == 3) {
+    const UChar *subst = sqlite3_value_text16(args[2]);
+    if (!subst) {
+      return;
+    }
+    int slen = sqlite3_value_bytes16(args[2]) / 2;
+    ucnv_setSubstString(cnv, subst, slen, &err);
+    if (U_FAILURE(err)) {
+      icuFunctionError(ctx, "ucnv_setSubstString", err);
+      return;
+    }
+  }
+
+  const UChar *utf16 = sqlite3_value_text16(args[0]);
+  if (!utf16) {
+    return;
+  }
+  int len = sqlite3_value_bytes16(args[0]) / 2;
+  // Fast track case where there's no substitutions
+  int olen = UCNV_GET_MAX_BYTES_FOR_STRING(len, ucnv_getMaxCharSize(cnv)) + 1;
+  char *out = sqlite3_malloc(olen);
+  if (!out) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  olen = ucnv_fromUChars(cnv, out, olen, utf16, len, &err);
+  if (U_SUCCESS(err)) {
+    sqlite3_result_blob(ctx, out, olen, sqlite3_free);
+    return;
+  } else if (err != U_BUFFER_OVERFLOW_ERROR) {
+    ucnv_reset(cnv);
+    icuFunctionError(ctx, "ucnv_fromUChars", err);
+    return;
+  }
+  char *out2 = sqlite3_realloc(out, olen + 1);
+  if (!out2) {
+    sqlite3_free(out);
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  out = out2;
+  err = U_ZERO_ERROR;
+  olen = ucnv_fromUChars(cnv, out, olen + 1, utf16, len, &err);
+  if (U_SUCCESS(err)) {
+    sqlite3_result_blob(ctx, out, olen, sqlite3_free);
+  } else {
+    sqlite3_free(out);
+    ucnv_reset(cnv);
+    icuFunctionError(ctx, "ucnv_fromUChars", err);
+  }
+}
+
+void icuConvertFrom(sqlite3_context *ctx, int nargs __attribute__((unused)),
+                    sqlite3_value **args) {
+  UErrorCode err = U_ZERO_ERROR;
+
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  UConverter *cnv = sqlite3_get_auxdata(ctx, 1);
+  if (!cnv) {
+    const char *cp = (const char *)sqlite3_value_text(args[1]);
+    if (!cp) {
+      return;
+    }
+    cnv = ucnv_open(cp, &err);
+    if (U_FAILURE(err)) {
+      icuFunctionError(ctx, "ucnv_open", err);
+      return;
+    }
+    sqlite3_set_auxdata(ctx, 1, cnv, icu_free_conv);
+  }
+
+  const char *local = sqlite3_value_blob(args[0]);
+  if (!local) {
+    return;
+  }
+  int len = sqlite3_value_bytes(args[0]);
+  int olen = ucnv_toUChars(cnv, NULL, 0, local, len, &err);
+  if (err != U_BUFFER_OVERFLOW_ERROR) {
+    ucnv_reset(cnv);
+    icuFunctionError(ctx, "ucnv_toUChars", err);
+    return;
+  }
+  UChar *out = sqlite3_malloc(olen * 2 + 2);
+  if (!out) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  err = U_ZERO_ERROR;
+  olen = ucnv_toUChars(cnv, out, olen + 1, local, len, &err);
+  if (U_SUCCESS(err)) {
+    sqlite3_result_text16(ctx, out, olen * 2, sqlite3_free);
+  } else {
+    sqlite3_free(out);
+    ucnv_reset(cnv);
+    icuFunctionError(ctx, "ucnv_toUChars", err);
+  }
+}
+
 void icuStripAccentsFunc(sqlite3_context *context, int argc,
                          sqlite3_value **argv);
 
@@ -1951,6 +2085,9 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
     {"initcap", 1, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuTitleFunc16},
     {"title", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuTitleFunc16},
     {"casefold", 1, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuCaseFoldFunc16},
+    {"convert_from", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuConvertFrom},
+    {"convert_to", 2, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuConvertTo},
+    {"convert_to", 3, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0, icuConvertTo},
     {"to_ascii", 1, SQLITE_UTF16 | SQLITE_DETERMINISTIC, 0,
      icuStripAccentsFunc},
 #if 0

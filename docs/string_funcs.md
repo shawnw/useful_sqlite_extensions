@@ -5,7 +5,8 @@ Introduction
 
 This Sqlite3 extension module adds extra functionality for dealing
 with text in SQL queries, with an emphasis on Unicode. It depends on
-[ICU] for most of its features.
+[ICU] for most of its features. Many functions are inspired by MySQL
+and Postgresql string functions.
 
 Since the standard [ICU extension] itself doesn't seem to be compiled
 into or otherwise provided by many OS's sqlite3 packages, it is
@@ -217,6 +218,22 @@ Greek and Cyrillic characters, smart quotes, smart dashes, etc. It
 knows about more conversions than its inspiration, can handle
 characters outside the BMP, and deals with combining characters in a
 more intelligent way.
+
+### CONVERT_TO()
+
+* CONVERT_TO(string, charset)
+* CONVERT_TO(string, charset, substitution)
+
+Convert a Unicode string to the given character encoding, and return
+the result as a blob. The optional `substitution` string is used to
+replace characters that can't be represented in the target encoding.
+
+### CONVERT_FROM()
+
+* CONVERT_FROM(blob, charset)
+
+Treats `blob` as being encoded in the given character encoding, and
+returns it converted to a Unicode string.
 
 Unicode Text Compression
 ------------------------

@@ -40,7 +40,7 @@
 </ul>
 </nav>
 <h1 id="introduction">Introduction</h1>
-<p>This Sqlite3 extension module adds extra functionality for dealing with text in SQL queries, with an emphasis on Unicode. It depends on <a href="http://site.icu-project.org/">ICU</a> for most of its features.</p>
+<p>This Sqlite3 extension module adds extra functionality for dealing with text in SQL queries, with an emphasis on Unicode. It depends on <a href="http://site.icu-project.org/">ICU</a> for most of its features. Many functions are inspired by MySQL and Postgresql string functions.</p>
 <p>Since the standard <a href="https://www.sqlite.org/src/dir?ci=cdb68d2c64e453fd&amp;name=ext/icu">ICU extension</a> itself doesn’t seem to be compiled into or otherwise provided by many OS’s sqlite3 packages, it is included as part of this one. See that documentation for details about what it provides.</p>
 <p>If you do a lot of things in your queries with Unicode text, or even just use Unicode-aware collations on index columns, consider setting the encoding of your databases to UTF-16 when creating them. Most <a href="http://site.icu-project.org/">ICU</a> functions work on UTF-16 strings, so this reduces the amount of converting to and from UTF-8.</p>
 <h1 id="scalar-functions">Scalar Functions</h1>
@@ -161,6 +161,17 @@
 <li>TO_ASCII(string)</li>
 </ul>
 <p>An enhanced version of <code>SPELLFIX1_TRANSLIT()</code> from the <em>spellfix1</em> extension. It converts Unicode text to ASCII, trying to gracefully downgrade many Latin accented characters and ligatures, transliterate Greek and Cyrillic characters, smart quotes, smart dashes, etc. It knows about more conversions than its inspiration, can handle characters outside the BMP, and deals with combining characters in a more intelligent way.</p>
+<h3 id="convert_to">CONVERT_TO()</h3>
+<ul>
+<li>CONVERT_TO(string, charset)</li>
+<li>CONVERT_TO(string, charset, substitution)</li>
+</ul>
+<p>Convert a Unicode string to the given character encoding, and return the result as a blob. The optional <code>substitution</code> string is used to replace characters that can’t be represented in the target encoding.</p>
+<h3 id="convert_from">CONVERT_FROM()</h3>
+<ul>
+<li>CONVERT_FROM(blob, charset)</li>
+</ul>
+<p>Treats <code>blob</code> as being encoded in the given character encoding, and returns it converted to a Unicode string.</p>
 <h2 id="unicode-text-compression">Unicode Text Compression</h2>
 <p>There are a few Unicode-specific text compression algorithms. They don’t have as good a compression ratio as more general purpose ones, but they have low overhead for compressing short strings. Could come in handy if you have a table with many short to medium length strings and are trying to save some space.</p>
 <h3 id="scsu_compress">SCSU_COMPRESS()</h3>
