@@ -23,9 +23,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <ctype.h>
 #include <openssl/bio.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
+#include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <sqlite3ext.h>
 #include <string.h>
@@ -1460,7 +1462,19 @@ static void bf_uuid(sqlite3_context *ctx, int nargs __attribute__((unused)),
     sqlite3_result_error_nomem(ctx);
     return;
   }
-  sqlite3_randomness(16, raw);
+  if (!RAND_bytes(raw, 16)) {
+    unsigned long errcode = ERR_get_error();
+    char *errmsg =
+        sqlite3_mprintf("RAND_bytes: %s", ERR_reason_error_string(errcode));
+    if (!errmsg) {
+      sqlite3_result_error_nomem(ctx);
+    } else {
+      sqlite3_result_error(ctx, errmsg, -1);
+      sqlite3_free(errmsg);
+    }
+    sqlite3_free(raw);
+    return;
+  }
   raw[6] = (raw[6] & 0xF) | 0x40;
   raw[8] = (raw[8] & 0x3F) | 0x80;
   sqlite3_result_blob(ctx, raw, 16, sqlite3_free);
@@ -1673,6 +1687,12 @@ __declspec(export)
                     {"uncompress", 1, bf_uncompress},
 #endif
                     {NULL, -1, NULL}};
+
+  while (!RAND_status()) {
+    unsigned char seed[32];
+    sqlite3_randomness(sizeof seed, seed);
+    RAND_seed(seed, sizeof seed);
+  }
 
   for (int n = 0; func_table[n].name; n += 1) {
     int rc = sqlite3_create_function(
