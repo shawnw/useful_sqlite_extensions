@@ -66,6 +66,11 @@ Math
 * SIGN(d/i)
 * PI() -- π
 
+Other
+-----
+
+* BIT_COUNT(i) -- Returns the number of set bits in its integer argument.
+
 Aggregate Functions
 ===================
 

@@ -307,6 +307,31 @@ static void mf_pi(sqlite3_context *p, int nArg __attribute__((unused)),
   sqlite3_result_double(p, M_PI);
 }
 
+#ifdef __GNUC__
+#if (defined(__x86_64) || defined(__i386))
+__attribute__((target("popcnt"))) static void
+mf_bitcount_hw(sqlite3_context *ctx, int nargs __attribute__((unused)),
+               sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+  sqlite3_uint64 n = sqlite3_value_int64(args[0]);
+  sqlite3_result_int(ctx, __builtin_popcountll(n));
+}
+#endif
+
+static void mf_bitcount_sw(sqlite3_context *ctx,
+                           int nargs __attribute__((unused)),
+                           sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+  sqlite3_uint64 n = sqlite3_value_int64(args[0]);
+  sqlite3_result_int(ctx, __builtin_popcountll(n));
+}
+
+#endif
+
 struct bit_agg {
   sqlite3_uint64 val;
   _Bool init;
@@ -545,7 +570,6 @@ __declspec(dllexport)
 
       {"div", 2, mf_div},     {"mod", 2, mf_mod},     {"sign", 1, mf_sign},
       {"pi", 0, mf_pi},
-
   };
   const struct MathAgg {
     const char *zName;  /* Function name */
@@ -564,6 +588,22 @@ __declspec(dllexport)
       {"var_samp", 1, mf_var_step, mf_var_samp},
   };
   int rc = SQLITE_OK;
+
+#if defined(__GNUC__)
+#if (defined(__x86_64) || defined(__i386))
+  rc = sqlite3_create_function(
+      db, "bit_count", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
+      __builtin_cpu_supports("popcnt") ? mf_bitcount_hw : mf_bitcount_sw, NULL,
+      NULL);
+#else
+  rc = sqlite3_create_function(db, "bit_count", 1,
+                               SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
+                               mf_bitcount_sw, NULL, NULL);
+#endif
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+#endif
 
   for (int i = 0;
        rc == SQLITE_OK && i < (int)(sizeof(scalars) / sizeof(scalars[0]));
