@@ -21,7 +21,9 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -31,6 +33,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <openssl/sha.h>
 #include <sqlite3ext.h>
 #include <string.h>
+
+#if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
+#include <nmmintrin.h>
+static int can_sse42 = -1;
+#endif
 
 #include "config.h"
 
@@ -942,55 +949,81 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
   sqlite3_result_blob(ctx, plain, plain_len, sqlite3_free);
 }
 
-static unsigned int hexchar_to_int(unsigned char c) {
-  switch (c) {
-  case '0':
-  case '1':
-  case '2':
-  case '3':
-  case '4':
-  case '5':
-  case '6':
-  case '7':
-  case '8':
-  case '9':
-    return c - '0';
-  case 'A':
-  case 'a':
-    return 10;
-  case 'B':
-  case 'b':
-    return 11;
-  case 'C':
-  case 'c':
-    return 12;
-  case 'D':
-  case 'd':
-    return 13;
-  case 'E':
-  case 'e':
-    return 14;
-  case 'F':
-  case 'f':
-    return 15;
-  default: /* Shouldn't be reached */
-    return 0xFF;
+#if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
+/* SSE 4.2 function to check to see if a string is just hex digits. 3-4
+   times faster than the plain version. */
+__attribute__((target("sse4.2"))) static int
+is_hexstr_sse42(const unsigned char *hex) {
+  static const signed char ___m128i_shift_right[31] = {
+      0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+#define CMP_FLAGS                                                              \
+  _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES | _SIDD_LEAST_SIGNIFICANT |               \
+      _SIDD_NEGATIVE_POLARITY
+  __m128i hexmask =
+      _mm_setr_epi8('0', '9', 'A', 'F', 'a', 'f', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  /* Get hex 16-byte aligned to avoid page boundary issues */
+  int offset = ((size_t)hex & 15);
+  if (offset) {
+    hex = (const unsigned char *)((size_t)hex & -16);
+    __m128i chars = _mm_load_si128((__m128i *)hex);
+    chars = _mm_shuffle_epi8(
+        chars, _mm_loadu_si128((__m128i *)(___m128i_shift_right + offset)));
+    int badchar = _mm_cmpistri(hexmask, chars, CMP_FLAGS);
+    if (badchar < 16 - offset) {
+      return hex[offset + badchar] == '\0';
+    }
+    hex += 16;
   }
+
+  while (1) {
+    __m128i chars = _mm_load_si128((__m128i *)hex);
+    int badchar = _mm_cmpistri(hexmask, chars, CMP_FLAGS);
+    if (badchar < 16) {
+      return hex[badchar] == '\0';
+    }
+    hex += 16;
+  }
+#undef CMP_FLAGS
+}
+#endif
+
+static _Bool is_hexstr(const unsigned char *hex, size_t len) {
+  if (len & 1) {
+    // Not an even number of characters
+    return 0;
+  }
+
+#if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
+  if (__builtin_expect(can_sse42 > 0, 1)) {
+    return is_hexstr_sse42(hex);
+  }
+#endif
+
+  for (size_t i = 0; i < len; i += 1) {
+    if (!isxdigit(hex[i])) {
+      return 0;
+    }
+  }
+  return 1;
 }
 
 static void bf_unhex(sqlite3_context *ctx, int nargs __attribute__((unused)),
                      sqlite3_value **args) {
+  static unsigned char mapping[UCHAR_MAX + 1] = {
+      ['0'] = 0,  ['1'] = 1,  ['2'] = 2,  ['3'] = 3,  ['4'] = 4,  ['5'] = 5,
+      ['6'] = 6,  ['7'] = 7,  ['8'] = 8,  ['9'] = 9,  ['A'] = 10, ['B'] = 11,
+      ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15, ['a'] = 10, ['b'] = 11,
+      ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15};
+
   const unsigned char *hex = sqlite3_value_text(args[0]);
   if (!hex) {
     return;
   }
   int hexlen = sqlite3_value_bytes(args[0]);
 
-  if (hexlen & 1) {
-    return;
-  }
-
-  if (strspn((const char *)hex, "0123456789ABCDEFabcdef") != (size_t)hexlen) {
+  if (!is_hexstr(hex, hexlen)) {
     return;
   }
 
@@ -1000,11 +1033,11 @@ static void bf_unhex(sqlite3_context *ctx, int nargs __attribute__((unused)),
     return;
   }
 
-  int i = 0;
-  for (int n = 0; n < hexlen; n += 2) {
-    blob[i++] = (hexchar_to_int(hex[n]) << 4) + hexchar_to_int(hex[n + 1]);
+  for (int i = 0, j = 0; i < hexlen; i += 2, j += 1) {
+    blob[j] = (mapping[hex[i]] << 4) | mapping[hex[i + 1]];
   }
-  sqlite3_result_blob(ctx, blob, i, sqlite3_free);
+
+  sqlite3_result_blob(ctx, blob, hexlen / 2, sqlite3_free);
 }
 
 static void bf_to_base64(sqlite3_context *ctx, int narg __attribute__((unused)),
@@ -1109,6 +1142,9 @@ static void bf_crc32(sqlite3_context *ctx, int nargs __attribute__((unused)),
 #if defined(__GNUC__) && (defined(__x86_64) || defined(__i386)) &&             \
     defined(CMAKE_USE_PTHREADS_INIT)
 #define HAVE_CRC32C
+/* Slightly modified for how it checks for SSE4.2 availability; see comments below.
+ * Consiside rewriting to use intrinsic functions instead of inline assembly?
+ */
 /* crc32c.c -- compute CRC-32C using the Intel crc32 instruction
  * Copyright (C) 2013 Mark Adler
  * Version 1.1  1 Aug 2013  Mark Adler
@@ -1431,13 +1467,12 @@ static uint32_t crc32c_hw(uint32_t crc, const void *buf, size_t len) {
 /* Compute a CRC-32C.  If the crc32 instruction is available, use the hardware
    version.  Otherwise, use the software version. */
 uint32_t crc32c(uint32_t crc, const void *buf, size_t len) {
-  // Changed to only check for SSE4.2 once.
-  static int sse42 = -1;
-
-  if (sse42 < 0) {
-    SSE42(sse42);
+  // Changed to only check for SSE4.2 once at module load time.
+  if (__builtin_expect(can_sse42 > 0, 1)) {
+    return crc32c_hw(crc, buf, len);
+  } else {
+    return crc32c_sw(crc, buf, len);
   }
-  return sse42 > 0 ? crc32c_hw(crc, buf, len) : crc32c_sw(crc, buf, len);
 }
 
 static void bf_crc32c(sqlite3_context *ctx, int nargs __attribute__((unused)),
@@ -1687,6 +1722,10 @@ __declspec(export)
                     {"uncompress", 1, bf_uncompress},
 #endif
                     {NULL, -1, NULL}};
+
+#if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
+  can_sse42 = __builtin_cpu_supports("sse4.2");
+#endif
 
   while (!RAND_status()) {
     unsigned char seed[32];
