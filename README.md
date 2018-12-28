@@ -8,7 +8,6 @@ in the *docs/* directory for details on individual extensions.
 * string_funcs - Lots of extra Unicode-aware text handling functions
   and more. Includes all of the standard ICU module as well.
 * math_funcs - Assorted floating-point functions.
-* nss_tables - Interfaces to */etc/passwd* etc.
 * blob_funcs - Assorted functions that act on blobs.
 * pcre2_funcs - Regular expressions using PCRE2
 * json_funcs - Extra JSON functions.

@@ -56,11 +56,6 @@ set_target_properties(bloom_filter1 PROPERTIES C_STANDARD 99
   C_STANDARD_REQUIRED ON)
 target_compile_options(bloom_filter1 PRIVATE -Wall -Wextra -Wno-implicit-fallthrough)
 
-add_library(nss_tables MODULE nss_tables.c passwd.c group.c)
-set_target_properties(nss_tables PROPERTIES C_STANDARD 99
-  C_STANDARD_REQUIRED ON)
-target_compile_options(nss_tables PRIVATE -Wall -Wextra)
-
 add_library(json_funcs MODULE json_funcs.c cJSON.c)
 set_target_properties(json_funcs PROPERTIES C_STANDARD 99
   C_STANDARD_REQUIRED ON)
