@@ -36,7 +36,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
 #include <nmmintrin.h>
-static int can_sse42 = -1;
 #endif
 
 #include "config.h"
@@ -952,16 +951,35 @@ static void bf_aes_decrypt(sqlite3_context *ctx,
 #if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
 /* SSE 4.2 function to check to see if a string is just hex digits. 3-4
    times faster than the plain version. */
-__attribute__((target("sse4.2"))) static int
-is_hexstr_sse42(const unsigned char *hex) {
+__attribute__((target("sse4.2"))) static void
+bf_unhex_sse42(sqlite3_context *ctx, int nargs __attribute__((unused)),
+               sqlite3_value **args) {
   static const signed char ___m128i_shift_right[31] = {
       0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+  static unsigned char mapping[UCHAR_MAX + 1] = {
+      ['0'] = 0,  ['1'] = 1,  ['2'] = 2,  ['3'] = 3,  ['4'] = 4,  ['5'] = 5,
+      ['6'] = 6,  ['7'] = 7,  ['8'] = 8,  ['9'] = 9,  ['A'] = 10, ['B'] = 11,
+      ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15, ['a'] = 10, ['b'] = 10,
+      ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15};
 #define CMP_FLAGS                                                              \
   _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES | _SIDD_LEAST_SIGNIFICANT |               \
       _SIDD_NEGATIVE_POLARITY
   __m128i hexmask =
       _mm_setr_epi8('0', '9', 'A', 'F', 'a', 'f', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+  const unsigned char *hex = sqlite3_value_text(args[0]);
+  if (!hex) {
+    return;
+  }
+  int hexlen = sqlite3_value_bytes(args[0]);
+
+  if (hexlen & 1) {
+    return;
+  }
 
   /* Get hex 16-byte aligned to avoid page boundary issues */
   int offset = ((size_t)hex & 15);
@@ -972,7 +990,11 @@ is_hexstr_sse42(const unsigned char *hex) {
         chars, _mm_loadu_si128((__m128i *)(___m128i_shift_right + offset)));
     int badchar = _mm_cmpistri(hexmask, chars, CMP_FLAGS);
     if (badchar < 16 - offset) {
-      return hex[offset + badchar] == '\0';
+      if (hex[offset + badchar] == '\0') {
+        goto cnvt;
+      } else {
+        return;
+      }
     }
     hex += 16;
   }
@@ -981,41 +1003,41 @@ is_hexstr_sse42(const unsigned char *hex) {
     __m128i chars = _mm_load_si128((__m128i *)hex);
     int badchar = _mm_cmpistri(hexmask, chars, CMP_FLAGS);
     if (badchar < 16) {
-      return hex[badchar] == '\0';
+      if (hex[badchar] == '\0') {
+        goto cnvt;
+      } else {
+        return;
+      }
     }
     hex += 16;
   }
+
+cnvt:
+  (void)1;
+  unsigned char *blob = sqlite3_malloc(hexlen / 2);
+  if (!blob) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  /* TODO: Merge this into the above loop. Need to figure out
+     how to handle an encoded byte that spans two 16-byte chunks. */
+  hex = sqlite3_value_text(args[0]);
+  for (int i = 0, j = 0; i < hexlen; i += 2, j += 1) {
+    blob[j] = (mapping[i] << 4) | mapping[i + 1];
+  }
+  sqlite3_result_blob(ctx, blob, hexlen / 2, sqlite3_free);
 #undef CMP_FLAGS
 }
 #endif
 
-static _Bool is_hexstr(const unsigned char *hex, size_t len) {
-  if (len & 1) {
-    // Not an even number of characters
-    return 0;
-  }
-
-#if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
-  if (__builtin_expect(can_sse42 > 0, 1)) {
-    return is_hexstr_sse42(hex);
-  }
-#endif
-
-  for (size_t i = 0; i < len; i += 1) {
-    if (!isxdigit(hex[i])) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
-static void bf_unhex(sqlite3_context *ctx, int nargs __attribute__((unused)),
-                     sqlite3_value **args) {
+static void bf_unhex_sw(sqlite3_context *ctx, int nargs __attribute__((unused)),
+                        sqlite3_value **args) {
   static unsigned char mapping[UCHAR_MAX + 1] = {
-      ['0'] = 0,  ['1'] = 1,  ['2'] = 2,  ['3'] = 3,  ['4'] = 4,  ['5'] = 5,
-      ['6'] = 6,  ['7'] = 7,  ['8'] = 8,  ['9'] = 9,  ['A'] = 10, ['B'] = 11,
-      ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15, ['a'] = 10, ['b'] = 11,
-      ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15};
+      ['0'] = 1,  ['1'] = 2,  ['2'] = 3,  ['3'] = 4,  ['4'] = 5,  ['5'] = 6,
+      ['6'] = 7,  ['7'] = 8,  ['8'] = 9,  ['9'] = 10, ['A'] = 11, ['B'] = 12,
+      ['C'] = 13, ['D'] = 14, ['E'] = 15, ['F'] = 16, ['a'] = 11, ['b'] = 11,
+      ['c'] = 13, ['d'] = 14, ['e'] = 15, ['f'] = 16};
 
   const unsigned char *hex = sqlite3_value_text(args[0]);
   if (!hex) {
@@ -1023,7 +1045,7 @@ static void bf_unhex(sqlite3_context *ctx, int nargs __attribute__((unused)),
   }
   int hexlen = sqlite3_value_bytes(args[0]);
 
-  if (!is_hexstr(hex, hexlen)) {
+  if (hexlen & 1) {
     return;
   }
 
@@ -1034,7 +1056,15 @@ static void bf_unhex(sqlite3_context *ctx, int nargs __attribute__((unused)),
   }
 
   for (int i = 0, j = 0; i < hexlen; i += 2, j += 1) {
-    blob[j] = (mapping[hex[i]] << 4) | mapping[hex[i + 1]];
+    int high = mapping[hex[i]];
+    int low = mapping[hex[i + 1]];
+
+    if (!high || !low) {
+      sqlite3_free(blob);
+      return;
+    }
+
+    blob[j] = ((high - 1) << 4) | (low - 1);
   }
 
   sqlite3_result_blob(ctx, blob, hexlen / 2, sqlite3_free);
@@ -1142,8 +1172,8 @@ static void bf_crc32(sqlite3_context *ctx, int nargs __attribute__((unused)),
 #if defined(__GNUC__) && (defined(__x86_64) || defined(__i386)) &&             \
     defined(CMAKE_USE_PTHREADS_INIT)
 #define HAVE_CRC32C
-/* Slightly modified for how it checks for SSE4.2 availability; see comments below.
- * Consiside rewriting to use intrinsic functions instead of inline assembly?
+/* Consider rewriting to use intrinsic functions instead of inline
+ * assembly?
  */
 /* crc32c.c -- compute CRC-32C using the Intel crc32 instruction
  * Copyright (C) 2013 Mark Adler
@@ -1451,32 +1481,9 @@ static uint32_t crc32c_hw(uint32_t crc, const void *buf, size_t len) {
   return (uint32_t)crc0 ^ 0xffffffff;
 }
 
-/* Check for SSE 4.2.  SSE 4.2 was first supported in Nehalem processors
-   introduced in November, 2008.  This does not check for the existence of the
-   cpuid instruction itself, which was introduced on the 486SL in 1992, so this
-   will fail on earlier x86 processors.  cpuid works on all Pentium and later
-   processors. */
-#define SSE42(have)                                                            \
-  do {                                                                         \
-    uint32_t eax, ecx;                                                         \
-    eax = 1;                                                                   \
-    __asm__("cpuid" : "=c"(ecx) : "a"(eax) : "%ebx", "%edx");                  \
-    (have) = (ecx >> 20) & 1;                                                  \
-  } while (0)
-
-/* Compute a CRC-32C.  If the crc32 instruction is available, use the hardware
-   version.  Otherwise, use the software version. */
-uint32_t crc32c(uint32_t crc, const void *buf, size_t len) {
-  // Changed to only check for SSE4.2 once at module load time.
-  if (__builtin_expect(can_sse42 > 0, 1)) {
-    return crc32c_hw(crc, buf, len);
-  } else {
-    return crc32c_sw(crc, buf, len);
-  }
-}
-
-static void bf_crc32c(sqlite3_context *ctx, int nargs __attribute__((unused)),
-                      sqlite3_value **args) {
+static void bf_crc32c_sse42(sqlite3_context *ctx,
+                            int nargs __attribute__((unused)),
+                            sqlite3_value **args) {
   if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
     return;
   }
@@ -1485,7 +1492,21 @@ static void bf_crc32c(sqlite3_context *ctx, int nargs __attribute__((unused)),
     return;
   }
   int blen = sqlite3_value_bytes(args[0]);
-  sqlite3_result_int64(ctx, crc32c(0, blob, blen));
+  sqlite3_result_int64(ctx, crc32c_hw(0, blob, blen));
+}
+
+static void bf_crc32c_sw(sqlite3_context *ctx,
+                         int nargs __attribute__((unused)),
+                         sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+  const void *blob = sqlite3_value_blob(args[0]);
+  if (!blob) {
+    return;
+  }
+  int blen = sqlite3_value_bytes(args[0]);
+  sqlite3_result_int64(ctx, crc32c_sw(0, blob, blen));
 }
 
 #endif
@@ -1706,12 +1727,8 @@ __declspec(export)
                     {"hmac", 3, bf_hmac},
                     {"aes_encrypt", 2, bf_aes_encrypt},
                     {"aes_decrypt", 2, bf_aes_decrypt},
-                    {"unhex", 1, bf_unhex},
                     {"to_base64", 1, bf_to_base64},
                     {"from_base64", 1, bf_from_base64},
-#ifdef HAVE_CRC32C
-                    {"crc32c", 1, bf_crc32c},
-#endif
                     {"uuid", 0, bf_uuid},
                     {"is_uuid", 1, bf_is_uuid},
                     {"bin_to_uuid", 1, bf_bin_to_uuid},
@@ -1724,7 +1741,45 @@ __declspec(export)
                     {NULL, -1, NULL}};
 
 #if defined(__GNUC__) && (defined(__x86_64) || defined(__i386))
-  can_sse42 = __builtin_cpu_supports("sse4.2");
+  if (__builtin_cpu_supports("sse4.2")) {
+    int rc;
+    rc = sqlite3_create_function(db, "unhex", 1,
+                                 SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
+                                 bf_unhex_sse42, NULL, NULL);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+    rc = sqlite3_create_function(db, "crc32c", 1,
+                                 SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
+                                 bf_crc32c_sse42, NULL, NULL);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+  } else {
+    int rc;
+    rc = sqlite3_create_function(db, "unhex", 1,
+                                 SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
+                                 bf_unhex_sw, NULL, NULL);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+    rc = sqlite3_create_function(db, "crc32c", 1,
+                                 SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
+                                 bf_crc32c_sw, NULL, NULL);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+  }
+#else
+  {
+    int rc;
+    rc = sqlite3_create_function(db, "unhex", 1,
+                                 SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
+                                 bf_unhex_sw, NULL, NULL);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+  }
 #endif
 
   while (!RAND_status()) {
