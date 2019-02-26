@@ -38,3 +38,16 @@ against; 3.24 and newer produce MySQL style output, older produces
 [cJSON] style.
 
 [cJSON]: https://github.com/DaveGamble/cJSON
+
+### JSON_KEYS()
+
+* JSON_KEYS(json)
+* JSON_KEYS(json, path)
+
+Returns a JSON array of the keys of the given JSON object.
+
+*** JSON_CONTAINS_PATH()
+
+* JSON_CONTAINS_PATH(json, path)
+
+Returns 1 if the json object has data at the given path, 0 otherwise.

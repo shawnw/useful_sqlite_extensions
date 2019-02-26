@@ -44,5 +44,16 @@
 <li>JSON_PRETTY(json)</li>
 </ul>
 <p>Returns <code>json</code>, pretty-printed for human readability. The exact format depends on the version of sqlite3 that the extension was compiled against; 3.24 and newer produce MySQL style output, older produces <a href="https://github.com/DaveGamble/cJSON">cJSON</a> style.</p>
+<h3 id="json_keys">JSON_KEYS()</h3>
+<ul>
+<li>JSON_KEYS(json)</li>
+<li>JSON_KEYS(json, path)</li>
+</ul>
+<p>Returns a JSON array of the keys of the given JSON object.</p>
+<p>*** JSON_CONTAINS_PATH()</p>
+<ul>
+<li>JSON_CONTAINS_PATH(json, path)</li>
+</ul>
+<p>Returns 1 if the json object has data at the given path, 0 otherwise.</p>
 </body>
 </html>

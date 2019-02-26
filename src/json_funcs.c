@@ -25,17 +25,22 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "cJSON.h"
 #include <sqlite3ext.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 SQLITE_EXTENSION_INIT1
 
-static cJSON *json_find_path(cJSON *json, char *path) {
+static cJSON *json_find_path(cJSON *json, char *path, int *err) {
+
+  *err = 0;
+
   if (!path) {
+    *err = 1;
     return NULL;
   }
   if (path[0] != '$') {
+    *err = 1;
     return NULL;
   }
 
@@ -45,23 +50,21 @@ static cJSON *json_find_path(cJSON *json, char *path) {
       size_t eok = strcspn(path + i, ".[");
       char saved = path[i + eok];
       path[i + eok] = '\0';
-      fprintf(stderr, "looking at %s, eok %zu\n", path + i, eok);
       json = cJSON_GetObjectItemCaseSensitive(json, path + i);
-      if (json) {
-        fprintf(stderr, "found\n");
-      }
       path[i + eok] = saved;
       i = i + eok - 1;
     } else if (path[i] == '[') {
       char *eon;
       int idx = strtoul(path + i + 1, &eon, 10);
       if (*eon != ']') {
+        *err = 1;
         json = NULL;
         break;
       }
       i = eon - path;
       json = cJSON_GetArrayItem(json, idx);
     } else {
+      *err = 1;
       json = NULL;
     }
   }
@@ -91,8 +94,12 @@ static void json_length(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
       cJSON_Delete(orig);
       return;
     }
-    json = json_find_path(json, path);
+    int error = 0;
+    json = json_find_path(json, path, &error);
     sqlite3_free(path);
+    if (error) {
+      sqlite3_result_error(ctx, "malformed path", -1);
+    }
     if (!json) {
       cJSON_Delete(orig);
       return;
@@ -208,8 +215,10 @@ static void json_pp(sqlite3_context *ctx, int nargs __attribute__((unused)),
   cJSON_Delete(json);
 }
 
-static void json_equal(sqlite3_context *ctx, int nargs __attribute__((unused)), sqlite3_value **args) {
-  if (sqlite3_value_type(args[0]) == SQLITE_NULL || sqlite3_value_type(args[1]) == SQLITE_NULL) {
+static void json_equal(sqlite3_context *ctx, int nargs __attribute__((unused)),
+                       sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
     return;
   }
 
@@ -230,6 +239,103 @@ static void json_equal(sqlite3_context *ctx, int nargs __attribute__((unused)), 
   cJSON_Delete(j2);
 }
 
+static void json_keys(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
+    return;
+  }
+  if (nargs == 2 && sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  cJSON *orig, *json;
+  orig = json = cJSON_Parse((const char *)sqlite3_value_text(args[0]));
+  if (!json) {
+    sqlite3_result_error(ctx, "malformed JSON", -1);
+    return;
+  }
+
+  if (nargs == 2) {
+    char *path =
+        sqlite3_mprintf("%s", (const char *)sqlite3_value_text(args[1]));
+    if (!path) {
+      sqlite3_result_error_nomem(ctx);
+      cJSON_Delete(orig);
+      return;
+    }
+    int error = 0;
+    json = json_find_path(json, path, &error);
+    sqlite3_free(path);
+    if (error) {
+      sqlite3_result_error(ctx, "malformed path", -1);
+    }
+    if (!json) {
+      cJSON_Delete(orig);
+      return;
+    }
+  }
+
+  if (!cJSON_IsObject(json)) {
+    cJSON_Delete(orig);
+    return;
+  }
+
+  cJSON *res = cJSON_CreateArray();
+  if (!res) {
+    cJSON_Delete(orig);
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  cJSON *elem;
+  cJSON_ArrayForEach(elem, json) {
+    cJSON *key = cJSON_CreateString(elem->string);
+    if (!key) {
+      cJSON_Delete(res);
+      cJSON_Delete(orig);
+      sqlite3_result_error_nomem(ctx);
+      return;
+    }
+
+    cJSON_AddItemToArray(res, key);
+  }
+
+  sqlite3_result_text(ctx, cJSON_PrintUnformatted(res), -1, cJSON_free);
+  cJSON_Delete(res);
+  cJSON_Delete(orig);
+}
+
+static void json_contains_path(sqlite3_context *ctx, int nargs,
+                               sqlite3_value **args) {
+  if (sqlite3_value_type(args[0]) == SQLITE_NULL ||
+      sqlite3_value_type(args[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  cJSON *orig, *json;
+  orig = json = cJSON_Parse((const char *)sqlite3_value_text(args[0]));
+  if (!json) {
+    sqlite3_result_error(ctx, "malformed JSON", -1);
+    return;
+  }
+
+  char *path = sqlite3_mprintf("%s", (const char *)sqlite3_value_text(args[1]));
+  if (!path) {
+    sqlite3_result_error_nomem(ctx);
+    cJSON_Delete(orig);
+    return;
+  }
+  int error = 0;
+  json = json_find_path(json, path, &error);
+  if (error) {
+    sqlite3_result_error(ctx, "malformed path", -1);
+    cJSON_Delete(orig);
+    return;
+  }
+  sqlite3_free(path);
+  sqlite3_result_int(ctx, !!json);
+  cJSON_Delete(orig);
+}
+
 #ifdef _WIN32
 __declspec(export)
 #endif
@@ -245,6 +351,9 @@ __declspec(export)
                     {"json_length", 1, json_length},
                     {"json_length", 2, json_length},
                     {"json_equal", 2, json_equal},
+                    {"json_keys", 1, json_keys},
+                    {"json_keys", 2, json_keys},
+                    {"json_contains_path", 2, json_contains_path},
                     {NULL, 0, NULL}};
 
   for (int i = 0; func_table[i].name; i += 1) {
