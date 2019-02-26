@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project("Useful Sqlite3 Extensions" LANGUAGES C VERSION 0.2)
+project("Useful Sqlite3 Extensions" LANGUAGES C VERSION 0.3)
 
 include(FindPackageHandleStandardArgs)
 set(CMAKE_THREAD_PREFER_PTHREAD 1)

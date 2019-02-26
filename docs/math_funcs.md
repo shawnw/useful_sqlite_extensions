@@ -78,15 +78,22 @@ Bitwise
 -------
 
 * BIT_OR(i)
-* BIT_XOR(i)
+* BIT_XOR(i) -- can be used as a window function
 * BIT_AND(i)
 
 Statistics
 ----------
 
-* COVAR_POP(d, d)
-* COVAR_SAMP(d, d)
-* STDDEV_POP(d)
-* STDDEV_SAMP(d)
-* VAR_POP(d)
-* VAR_SAMP(d)
+* COVAR_POP(d, d) -- Population covariance. Can be used as a window function
+* COVAR_SAMP(d, d) -- Sample covariance. Can be used as a window function
+* STDDEV_POP(d) -- Population standard deviation
+* STDDEV_SAMP(d) -- Sample standard deviation
+* VAR_POP(d) -- Population variance
+* VAR_SAMP(d) -- Sample variance
+* GEO_MEAN(d) -- Geometric mean. Can be used as a window function
+* HARM_MEAN(d) -- Harmonic mean. Can be used as a window function.
+* MEDIAN(d) -- Can be used as a window function.
+* MODE(d) -- Can be used as a window function.
+* Q1(d) -- 1st Quartile Value. Can be used as a window function.
+* Q3(d) -- 3rd Quartile Value. Can be used as a window function.
+* IQR(d) -- Interquartile Range. Can be used as a window function.
