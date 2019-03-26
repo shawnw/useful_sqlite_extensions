@@ -1,0 +1,222 @@
+#!/usr/bin/env perl
+# -*- perl -*-
+# Smart import of CSV files into sqlite tables.
+# Usage: csv2sqlite [OPTIONS] database tablename [FILE]
+# csv2sqlite --help or see the bottom of the source for details.
+
+#  Copyright 2019 Shawn Wagner
+
+# Permission is hereby granted, free of charge, to any person
+# obtaining a copy of this software and associated documentation files
+# (the "Software"), to deal in the Software without restriction,
+# including without limitation the rights to use, copy, modify, merge,
+# publish, distribute, sublicense, and/or sell copies of the Software,
+# and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+# BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+# ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+use warnings;
+use strict;
+use autodie;
+use feature qw/say/;
+use DBI; # Also needs DBD::SQLite, obviously
+use Text::CSV_XS;
+use Getopt::Long;
+use Pod::Usage;
+
+# Options
+my $sep = ',';
+my $has_headers = 0;
+my $guess_types = 0;
+my $empty_null = 0;
+my $help = 0;
+my $strip = 0;
+my $primary_key;
+my $ipk;
+my $ignore = 0;
+my $replace = 0;
+my $debug = 0;
+my $verbose = 0;
+GetOptions('t=s' => \$sep,
+           'headers' => \$has_headers,
+           'guess-types' => \$guess_types,
+           'empty-nulls' => \$empty_null,
+           'strip' => \$strip,
+           'primary-key|pk=s' => \$primary_key,
+           'ipk=s' => \$ipk,
+           'ignore' => \$ignore,
+           'replace' => \$replace,
+           'debug' => \$debug,
+           'verbose' => \$verbose,
+           'help' => \$help)
+    or pod2usage(2);
+pod2usage(1) if $help;
+pod2usage(2) if @ARGV < 2;
+die "Cannot use both --ignore and --replace\n" if $ignore && $replace;
+die "Cannut use both --primary-key and --ipk\n" if $primary_key && $ipk;
+$verbose = 1 if $debug;
+
+my $database = shift;
+my $table = shift;
+my $fh = \*ARGV;
+
+my $csv = Text::CSV_XS->new({binary => 1, sep_char => $sep, auto_diag => 2,
+                             blank_is_undef => $empty_null,
+                             allow_whitespace => $strip});
+
+my $dbh = DBI->connect("dbi:SQLite:dbname=$database", '', '',
+                       { sqlite_see_if_its_a_number => $guess_types,
+                         AutoCommit => 1,
+                         RaiseError => 1
+                       });
+
+my $exists = table_exists($dbh, $table);
+my @headers;
+
+if (!$exists || $has_headers) {
+    @headers = map { s/"/""/g; qq/"$_"/ }
+      $csv->header($fh, { munge_column_names => 'lc' });
+    say 'Read headers from file' if $debug;
+}
+
+$dbh->begin_work;
+
+if (!$exists) {
+    local $" = ',';
+    my @pks;
+    if (defined $ipk) {
+        $ipk =~ s/"/""/g;
+        @pks = (qq/"$ipk"/);
+    } elsif (defined $primary_key) {
+        @pks = map { s/"/""/g; qq/"$_"/ } split /,/, $primary_key;
+    }
+    my @columns = map { $ipk && $_ eq $pks[0] ? "$_ INTEGER" : $_ } @headers;
+    my $create = qq/CREATE TABLE "$table"(@columns/;
+    $create .= ", PRIMARY KEY(@pks)" if @pks;        
+    $create .= ')';
+    say "Table $table does not exist; creating." if $verbose;
+    say "Creating table using: $create" if $debug;    
+    $dbh->do($create);
+}
+
+my $insert;
+$insert = build_insert_stmt($dbh, \@headers, \@headers) if @headers;
+
+my $count = 0;
+while (my $row = $csv->getline($fh)) {
+    $insert = build_insert_stmt($dbh, [], $row) unless defined $insert;
+    eval { $insert->execute(@$row) };
+    $count += $insert->rows;
+}
+
+say "Inserted $count rows into $table" if $verbose;
+
+$dbh->commit;
+$dbh->disconnect;
+
+sub table_exists {
+    my ($db, $table) = @_;
+    my $res = $db->selectrow_array(<<EOQ, {}, $table);
+SELECT count(*)
+FROM sqlite_master
+WHERE type = 'table' AND name = ?
+EOQ
+
+    return $res == 1;
+}
+
+sub build_insert_stmt {
+    my ($db, $headers, $cols) = @_;
+    local $" = ',';
+    my @values = ('?') x @$cols;
+    my $constraint = $ignore ? 'OR IGNORE'
+        : ($replace ? 'OR REPLACE' : 'OR ABORT');
+    my $insert = qq/INSERT $constraint INTO "$table"/;
+    $insert .= "(@$headers)" if @$headers;
+    $insert .= " VALUES(@values)";
+    say "Inserting rows using: $insert" if $debug;
+    return $dbh->prepare($insert);
+}
+
+
+__END__
+
+=head1 NAME
+
+csv2sqlite Import a CSV file into Sqlite database
+
+=head1 SYNOPSIS
+
+csv2sqlite [OPTIONS] database tablename [FILE]
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-t CHAR>
+
+Set field separator.
+
+=item B<--headers>
+
+Treat the first row as a list of column names to use when creating a
+new table or inserting into an existing table. If the table does not
+exist, a header line is always assumed.
+
+=item B<--primary-key=COLUMNS>
+
+Set the primary key of the newly created table to the given
+comma-separated column names. Ignored if the table exists.
+
+=item B<--ipk=COLUMN>
+
+The (single) given column should be an B<INTEGER PRIMARY KEY>
+one. Ignored if the table exists. Cannot be combined with
+C<--primary-key>.
+
+=item B<--guess-types>
+
+Try to figure out if a value is a numeric type and insert accordingly,
+instead of treating all values as strings.
+
+=item B<--empty-nulls>
+
+Empty unquoted fields are inserted as null values, not 0-length
+strings.
+
+=item B<--strip>
+
+Remove leading and trailing whitespace from unquoted fields.
+
+=item B<--ignore>
+
+Ignore inserts that fail because of constraint violations.
+
+=item B<--replace>
+
+Replace the existing row with the current one on constraint
+violations.
+
+=item B<--help>
+
+Display help.
+
+=back
+
+=head1 DESCRIPTION
+
+Import a CSV file into a Sqlite database with some extra features not
+provided by the normal sqlite3 shell's import functionality.
+
+=cut
