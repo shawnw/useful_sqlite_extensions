@@ -30,6 +30,8 @@ the first line of the CSV input as column names.
    `--pk`. Ignored if importing into an existing table.
 * `--ipk` Takes a single column name and treats it as an `INTEGER
   PRIMARY KEY` rowid alias. Can't be used with `--primary-key`.
+* `--without-rowid` Makes the table a **WITHOUT ROWID** one. Requires
+  a primary key. Ignored if the table already exists.
 * `--headers` If importing into an existing table, this option assumes
   the first line is a header with column/field names that should not
   be inserted. Default behavior mimics the sqlite3 shell and tries to

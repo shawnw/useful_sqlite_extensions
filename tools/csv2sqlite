@@ -44,6 +44,7 @@ my $help = 0;
 my $strip = 0;
 my $primary_key;
 my $ipk;
+my $without_rowid = 0;
 my $ignore = 0;
 my $replace = 0;
 my $debug = 0;
@@ -55,6 +56,7 @@ GetOptions('t=s' => \$sep,
            'strip' => \$strip,
            'primary-key|pk=s' => \$primary_key,
            'ipk=s' => \$ipk,
+           "without-rowid" => \$without_rowid,
            'ignore' => \$ignore,
            'replace' => \$replace,
            'debug' => \$debug,
@@ -105,6 +107,7 @@ if (!$exists) {
     my $create = qq/CREATE TABLE "$table"(@columns/;
     $create .= ", PRIMARY KEY(@pks)" if @pks;        
     $create .= ')';
+    $create .= " WITHOUT ROWID" if $without_rowid;
     say "Table $table does not exist; creating." if $verbose;
     say "Creating table using: $create" if $debug;    
     $dbh->do($create);
@@ -184,6 +187,11 @@ comma-separated column names. Ignored if the table exists.
 The (single) given column should be an B<INTEGER PRIMARY KEY>
 one. Ignored if the table exists. Cannot be combined with
 C<--primary-key>.
+
+=item B<--without-rowid>
+
+Make the table a B<WITHOUT ROWID> one. Requires a primary key. Ignored
+if the table exists.
 
 =item B<--guess-types>
 
