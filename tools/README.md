@@ -49,6 +49,8 @@ the first line of the CSV input as column names.
   instead of aborting.
 * `--replace` Replace an existing row with the current one on a
   constraint violation. Cannot be combined with `--ignore`.
+* `--unsafe` Turn on options that speed up insertion at the cost of
+  possible database corruption on OS crash or power loss.
 * `--help` I need somebody! Not just anybody!
 
 

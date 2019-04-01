@@ -30,6 +30,7 @@ use warnings;
 use strict;
 use autodie;
 use feature qw/say/;
+use open ':locale';
 use DBI; # Also needs DBD::SQLite, obviously
 use Text::CSV_XS;
 use Getopt::Long;
@@ -49,6 +50,7 @@ my $ignore = 0;
 my $replace = 0;
 my $debug = 0;
 my $verbose = 0;
+my $unsafe = 0;
 GetOptions('t=s' => \$sep,
            'headers' => \$has_headers,
            'guess-types' => \$guess_types,
@@ -61,6 +63,7 @@ GetOptions('t=s' => \$sep,
            'replace' => \$replace,
            'debug' => \$debug,
            'verbose' => \$verbose,
+           'unsafe' => \$unsafe,
            'help' => \$help)
     or pod2usage(2);
 pod2usage(1) if $help;
@@ -71,7 +74,13 @@ $verbose = 1 if $debug;
 
 my $database = shift;
 my $table = shift;
-my $fh = \*ARGV;
+my $fh;
+if (@ARGV) {
+    my $filename = shift;
+    open $fh, "<", $filename;
+} else {
+    $fh = \*STDIN;
+}
 
 my $csv = Text::CSV_XS->new({binary => 1, sep_char => $sep, auto_diag => 2,
                              blank_is_undef => $empty_null,
@@ -87,10 +96,16 @@ my $exists = table_exists($dbh, $table);
 my @headers;
 
 if (!$exists || $has_headers) {
-    @headers = map { s/"/""/g; qq/"$_"/ }
-      $csv->header($fh, { munge_column_names => 'lc' });
+    @headers =
+        $csv->header($fh, { munge_column_names => sub { 
+            my $col = lc $_;
+            $col =~ s/"/""/g;
+            qq/"$col"/;         
+                            }});
     say 'Read headers from file' if $debug;
 }
+
+$dbh->do('PRAGMA synchronous = OFF') if $unsafe;
 
 $dbh->begin_work;
 
@@ -215,6 +230,11 @@ Ignore inserts that fail because of constraint violations.
 
 Replace the existing row with the current one on constraint
 violations.
+
+=item B<--unsafe>
+
+Speed up insertion at the cost of possible database corruption on OS
+crash or power loss at the wrong time.
 
 =item B<--help>
 
