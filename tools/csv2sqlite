@@ -72,6 +72,8 @@ pod2usage(1) if $help;
 pod2usage(2) if @ARGV < 2;
 die "Cannot use both --ignore and --replace\n" if $ignore && $replace;
 die "Cannot use both --primary-key and --ipk\n" if $primary_key && $ipk;
+die "Cannot use --without-rowid without a primary key\n"
+    if $without_rowid && !($primary_key || $ipk);
 $verbose = 1 if $debug;
 
 my $database = shift;
