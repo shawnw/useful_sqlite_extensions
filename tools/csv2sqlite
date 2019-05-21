@@ -222,7 +222,9 @@ strings.
 
 =item B<--strip>
 
-Remove leading and trailing whitespace from unquoted fields.
+Remove leading and trailing whitespace from fields (Such spaces are
+always kept if inside quoted fields. Spaces before or after the quotes
+are removed with this option).
 
 =item B<--ignore>
 

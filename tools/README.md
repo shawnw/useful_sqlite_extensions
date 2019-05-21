@@ -44,7 +44,8 @@ the first line of the CSV input as column names.
 * `--empty-nulls` Normally an empty field is treated as a 0 length
   string. This inserts them as `NULL`s instead.
 * `--strip` When set, strips leading and trailing whitespace from
-  unquoted fields.
+  fields (Such spaces are always kept if inside quoted fields. Spaces
+  before or after the quotes are removed with this option).
 * `--ignore` Ignore attempts to insert rows with constraint violations
   instead of aborting.
 * `--replace` Replace an existing row with the current one on a
