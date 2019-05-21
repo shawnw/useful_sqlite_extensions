@@ -82,7 +82,8 @@ if (@ARGV) {
     $fh = \*STDIN;
 }
 
-my $csv = Text::CSV_XS->new({binary => 1, sep_char => $sep, auto_diag => 2,
+my $csv = Text::CSV_XS->new({binary => 1, sep_char => $sep,
+                             auto_diag => 2, diag_verbose => 1,
                              blank_is_undef => $empty_null,
                              allow_whitespace => $strip});
 
@@ -137,6 +138,7 @@ while (my $row = $csv->getline($fh)) {
     eval { $insert->execute(@$row) };
     $count += $insert->rows;
 }
++$csv->error_diag and $csv->error_diag; # auto_diag doesn't always report errors
 
 say "Inserted $count rows into $table" if $verbose;
 
