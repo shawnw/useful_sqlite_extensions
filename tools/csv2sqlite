@@ -38,6 +38,7 @@ use Pod::Usage;
 
 # Options
 my $sep = ',';
+my $columns;
 my $has_headers = 0;
 my $guess_types = 0;
 my $empty_null = 0;
@@ -52,6 +53,7 @@ my $debug = 0;
 my $verbose = 0;
 my $unsafe = 0;
 GetOptions('t=s' => \$sep,
+           'columns=s' => \$columns,
            'headers' => \$has_headers,
            'guess-types' => \$guess_types,
            'empty-nulls' => \$empty_null,
@@ -69,7 +71,7 @@ GetOptions('t=s' => \$sep,
 pod2usage(1) if $help;
 pod2usage(2) if @ARGV < 2;
 die "Cannot use both --ignore and --replace\n" if $ignore && $replace;
-die "Cannut use both --primary-key and --ipk\n" if $primary_key && $ipk;
+die "Cannot use both --primary-key and --ipk\n" if $primary_key && $ipk;
 $verbose = 1 if $debug;
 
 my $database = shift;
@@ -96,7 +98,7 @@ my $dbh = DBI->connect("dbi:SQLite:dbname=$database", '', '',
 my $exists = table_exists($dbh, $table);
 my @headers;
 
-if (!$exists || $has_headers) {
+if ((!$exists && !defined $columns) || $has_headers) {
     @headers =
         $csv->header($fh, { munge_column_names => sub { 
             my $col = lc $_;
@@ -117,9 +119,11 @@ if (!$exists) {
         $ipk =~ s/"/""/g;
         @pks = (qq/"$ipk"/);
     } elsif (defined $primary_key) {
-        @pks = map { s/"/""/g; qq/"$_"/ } split /,/, $primary_key;
+        @pks = column_names($primary_key);
     }
-    my @columns = map { $ipk && $_ eq $pks[0] ? "$_ INTEGER" : $_ } @headers;
+    my @columns =
+        map { $ipk && $_ eq $pks[0] ? "$_ INTEGER" : $_ }
+          (defined $columns ? column_names($columns) : @headers);
     my $create = qq/CREATE TABLE "$table"(@columns/;
     $create .= ", PRIMARY KEY(@pks)" if @pks;        
     $create .= ')';
@@ -169,6 +173,9 @@ sub build_insert_stmt {
     return $dbh->prepare($insert);
 }
 
+sub column_names {
+    map { s/"/""/g; qq/"$_"/ } split(/,/, $_[0]);
+}
 
 __END__
 
@@ -193,6 +200,14 @@ Set field separator.
 Treat the first row as a list of column names to use when creating a
 new table or inserting into an existing table. If the table does not
 exist, a header line is always assumed.
+
+=item B<--columns=COLUMNS>
+
+When creating a table, normally the first line is used to get the
+column names. With this option, the given comma-separted names are
+used instead, and the first line is treated as data (Unless
+C<--headers> is also given; then the names must be the same but the
+order can be different).
 
 =item B<--primary-key=COLUMNS>
 

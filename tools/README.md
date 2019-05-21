@@ -38,6 +38,11 @@ the first line of the CSV input as column names.
   insert all rows. When reading headers, they're used as column names
   for inserting rows, so the order of columns in the table can be
   different from the order in the CSV file.
+* `--columns=COLUMNS` A comma-separted list of column names. When
+  creating a table, normally the first line is used to get the column
+  names. With this option, the given names are used instead, and the
+  first line is treated as data (Unless `--headers` is also given;
+  then the names must be the same but the order can be different).
 * `--guess-types` Normally, all fields are inserted as strings. With
   this option, it tries to insert values that look like numbers as
   numbers.
