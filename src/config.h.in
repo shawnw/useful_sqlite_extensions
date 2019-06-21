@@ -1,0 +1,8 @@
+/* Config file for compile-time options */
+#pragma once
+
+#cmakedefine HAVE_PCRE2_8
+#cmakedefine HAVE_PCRE2_16
+#cmakedefine CMAKE_USE_PTHREADS_INIT
+#cmakedefine ZLIB_FOUND
+
