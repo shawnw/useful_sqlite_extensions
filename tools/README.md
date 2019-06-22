@@ -59,8 +59,43 @@ the first line of the CSV input as column names.
   possible database corruption on OS crash or power loss.
 * `--help` I need somebody! Not just anybody!
 
+table2sql
+---------
+
+Convert a typical ASCII art table where columns are separated by pipes
+(`|`) into SQLite DDL statements. The first line of the input is used
+as the header to get column names.
+
+Created as a way to make it easier to work with sample data in Stack
+Overflow questions; hence none of the fine-tuning options for defining
+keys, etc. like with `csv2sqlite`. It's intended mostly for use with
+throwaway data and in-memory databases. Depends on [Regexp::Common].
+
+### Usage ###
+
+    table2sql [OPTIONS] [TABLE NAME] [TABLE FILE]
+    
+### Options ###
+
+* `-t` Create a temporary table.
+* `--help` Display help.
+
+### Example ###
+
+    $ table2sql example <<EOF
+    Header1 | Header2
+    --------+--------
+      a     |    b
+      1     |    2
+    EOF
+    BEGIN TRANSACTION;
+    CREATE TABLE IF NOT EXISTS "example"("Header1","Header2");
+    INSERT INTO "example" VALUES ('a','b');
+    INSERT INTO "example" VALUES (1,2);
+    COMMIT;
+
 
 [DBD::SQLite]: https://metacpan.org/pod/DBD::SQLite
 [CSV import]: https://www.sqlite.org/cli.html#csv_import
 [Text::CSV_XS]: https://metacpan.org/pod/Text::CSV_XS
-
+[Regexp::Common]: https://metacpan.org/pod/Regexp::Common

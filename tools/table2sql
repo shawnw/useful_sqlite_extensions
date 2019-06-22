@@ -1,0 +1,88 @@
+#!/usr/bin/env perl
+# -*- perl -*-
+
+# Bare bones tool to convert a table like
+#
+# HEADER2 | HEADER2
+# --------|--------
+# VALUE1  | VALUE2
+#
+# to sqlite3-dialect SQL DDL statements.
+
+use warnings;
+use strict;
+use feature qw/say/;
+use Regexp::Common qw/number/;
+use Getopt::Long;
+use Pod::Usage;
+
+my $temp_table = 0;
+my $help = 0;
+GetOptions('t' => \$temp_table,
+           'help' => \$help);
+pod2usage(1) if $help;
+
+my $strip_pipes = qr/(?:^\s*\|\s*) # Leading pipe and whitespace
+                   |
+                     (?:\s*\|\s*$) # Trailing pipe and whitespace
+                    /x;
+my $pipes = qr/\s*\|\s*/;
+$" = ',';
+
+my $table = shift // 'mytable';
+$table =~ s/"/""/g;
+$table = qq{"$table"};
+$table = "temp.$table" if $temp_table;
+
+my $header = <>;
+$header =~ s/$strip_pipes//g;
+my @columns = map { s/"/""/g; qq/"$_"/ } split /$pipes/, $header;
+
+say "BEGIN TRANSACTION;";
+say "CREATE TABLE IF NOT EXISTS $table(@columns);";
+
+while (<>) {
+  next if /^\s*[-+|]+\s*$/;     # Skip separator lines
+  s/$strip_pipes//g;
+  my @values = map { /^$RE{num}{real}$/ ? $_ : do { s/'/''/g; qq{'$_'} } }
+    split /$pipes/;
+  say "INSERT INTO $table VALUES (@values);";
+}
+say "COMMIT;";
+
+__END__
+
+=head1 NAME
+
+table2sql Convert an ASCII art table to SQLite 
+
+=head1 SYNOPSIS
+
+table2sql [OPTIONS] [TABLE NAME] [TABLE FILE]
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-t>
+
+Create a temporary table.
+
+=item B<--help>
+
+Display help.
+
+=back
+
+=head1 DESCRIPTION
+
+Given an ASCII art table where columns are separated by pipe
+characters (C<|>), generate SQLite flavor C<CREATE TABLE> and C<INSERT
+INTO> statements to recreate it in a database. The first line of input
+must be a header with column names.
+
+Reads from standard input if no filename is given.
+
+Outputs to standard output.
+
+=cut
