@@ -1,21 +1,22 @@
-Useful (?) Sqlite3 Extensions
-=============================
+Useful (?) Sqlite3 Stuff
+========================
+
+Extensions
+----------
 
 A handful of hopefully useful Sqlite3 extensions. Written mostly as a
 way to get more familiar with the extension frameworks. See the files
 in the *docs/* directory for details on individual extensions.
 
-* string_funcs - Lots of extra Unicode-aware text handling functions
+* **string_funcs** - Lots of extra Unicode-aware text handling functions
   and more. Includes all of the standard ICU module as well.
-* math_funcs - Assorted floating-point functions.
-* blob_funcs - Assorted functions that act on blobs.
-* pcre2_funcs - Regular expressions using PCRE2
-* json_funcs - Extra JSON functions.
-* bloom_filter1 - Bloom filter indexes.
+* **math_funcs** - Assorted floating-point functions.
+* **blob_funcs** - Assorted functions that act on blobs.
+* **pcre2_funcs** - Regular expressions using PCRE2
+* **json_funcs** - Extra JSON functions.
+* **bloom_filter1** - Bloom filter indexes.
 
-
-Build Instructions
-------------------
+### Build Instructions ###
 
     % mkdir build
     % cd build
@@ -31,10 +32,18 @@ package installed, no libstring_funcs, for example).
 
 A C99 compiler and standard library is required.
 
+Tools
+-----
+
+Assorted scripts in the `tools/` directory. See the
+[README](tools/README.md) there for details.
+
+* **csv2sqlite** - Import CSV files into SQLite databases.
+* **table2sql** - Convert ASCII art tables to SQL statements.
+
 To-Do
 -----
 
-* Actually add configure tests for nss_tables.
 * Some of the string functions do a lot of reallocation and could
   stand to be improved.
 * Test cases!
