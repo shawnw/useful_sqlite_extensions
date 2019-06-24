@@ -57,6 +57,7 @@ $table = qq{"$table"};
 $table = "temp.$table" if $temp_table;
 
 my $header = <>;
+chomp $header;
 $header =~ s/$strip_pipes//g;
 my @columns = map { s/"/""/g; qq/"$_"/ } split /$pipes/, $header;
 
@@ -64,7 +65,8 @@ say "BEGIN TRANSACTION;";
 say "CREATE TABLE IF NOT EXISTS $table(@columns);";
 
 while (<>) {
-  next if /^\s*[-+|]+\s*$/;     # Skip separator lines
+  chomp;
+  next if /^\s*[-+|_]+\s*$/;     # Skip separator lines
   s/$strip_pipes//g;
   my @values = map { /^$RE{num}{real}$/ ? $_ : do { s/'/''/g; qq{'$_'} } }
     split /$pipes/;
