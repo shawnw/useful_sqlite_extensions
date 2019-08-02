@@ -197,6 +197,7 @@ static void json_pp(sqlite3_context *ctx, int nargs __attribute__((unused)),
     char *text = sqlite3_str_finish(out);
     if (text) {
       sqlite3_result_text(ctx, text, -1, sqlite3_free);
+      sqlite3_result_subtype(ctx, 'J');
     }
   } else {
     char *text = sqlite3_str_finish(out);
@@ -208,6 +209,7 @@ static void json_pp(sqlite3_context *ctx, int nargs __attribute__((unused)),
   char *text = cJSON_Print(json);
   if (text) {
     sqlite3_result_text(ctx, text, -1, free);
+    sqlite3_result_subtype(ctx, 'J');
   }
 
 #endif
@@ -300,6 +302,7 @@ static void json_keys(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
   }
 
   sqlite3_result_text(ctx, cJSON_PrintUnformatted(res), -1, cJSON_free);
+  sqlite3_result_subtype(ctx, 'J');
   cJSON_Delete(res);
   cJSON_Delete(orig);
 }
