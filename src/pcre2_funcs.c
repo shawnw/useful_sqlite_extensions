@@ -43,7 +43,6 @@ void re_regexp8(sqlite3_context *ctx, int nargs __attribute__((unused)),
       sqlite3_result_error_nomem(ctx);
       return;
     }
-    printf("Compiling '%s'\n", sqlite3_value_text(args[0]));
     c->re = pcre2_compile_8(
         sqlite3_value_text(args[0]), sqlite3_value_bytes(args[0]),
         PCRE2_ANCHORED | PCRE2_ENDANCHORED | PCRE2_UTF | PCRE2_UCP, &errcode,
@@ -52,7 +51,7 @@ void re_regexp8(sqlite3_context *ctx, int nargs __attribute__((unused)),
       PCRE2_UCHAR8 errstr[120];
       sqlite3_free(c);
       pcre2_get_error_message_8(errcode, errstr, sizeof errstr);
-      sqlite3_result_error(ctx, errstr, -1);
+      sqlite3_result_error(ctx, (const char *)&errstr, -1);
       return;
     }
     pcre2_jit_compile_8(c->re, PCRE2_JIT_COMPLETE);
@@ -69,14 +68,14 @@ void re_version8(sqlite3_context *ctx, int nargs __attribute__((unused)),
                  sqlite3_value **args __attribute__((unused))) {
   PCRE2_UCHAR8 vers[24];
   pcre2_config_8(PCRE2_CONFIG_VERSION, vers);
-  sqlite3_result_text(ctx, vers, -1, SQLITE_TRANSIENT);
+  sqlite3_result_text(ctx, (const char *)&vers, -1, SQLITE_TRANSIENT);
 }
 
 void re_unicode8(sqlite3_context *ctx, int nargs __attribute__((unused)),
                  sqlite3_value **args __attribute__((unused))) {
   PCRE2_UCHAR8 vers[24];
   pcre2_config_8(PCRE2_CONFIG_UNICODE_VERSION, vers);
-  sqlite3_result_text(ctx, vers, -1, SQLITE_TRANSIENT);
+  sqlite3_result_text(ctx, (const char *)&vers, -1, SQLITE_TRANSIENT);
 }
 #endif
 
