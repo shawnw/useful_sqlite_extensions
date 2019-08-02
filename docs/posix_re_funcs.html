@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>POSIX regular expression functions</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">POSIX regular expression functions</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#functions">Functions</a><ul>
+<li><a href="#matching">Matching</a></li>
+</ul></li>
+<li><a href="#to-do">To-Do</a></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p>This Sqlite3 extension module provides regular expression functions using POSIX Extended and Basic syntax.</p>
+<p>See the <code>string_funcs</code> module for versions using <a href="http://site.icu-project.org">ICU</a> regular expressions and <code>pcre2_funcs</code> module for <a href="https://www.pcre.org">PCRE2</a> regular expressions.</p>
+<h1 id="functions">Functions</h1>
+<h2 id="matching">Matching</h2>
+<h3 id="regexp">REGEXP()</h3>
+<ul>
+<li>REGEXP(re, string)</li>
+<li>EXT_REGEXP(re, string)</li>
+<li>string REGEXP re</li>
+</ul>
+<p>Returns 1 if <code>string</code> matches against the Extended Regular Expression <code>re</code>.</p>
+<h3 id="basic_regexp">BASIC_REGEXP()</h3>
+<ul>
+<li>BASIC_REGEXP(re, string)</li>
+</ul>
+<p>Returns 1 if <code>string</code> matches against the Basic Regular Expression <code>re</code>.</p>
+<h1 id="to-do">To-Do</h1>
+<ul>
+<li>Add the rest of the MySQL RE functions.</li>
+</ul>
+</body>
+</html>

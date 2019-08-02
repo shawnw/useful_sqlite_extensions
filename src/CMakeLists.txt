@@ -46,6 +46,14 @@ if(Pcre2_8_FOUND OR Pcre2_8_FOUND)
   target_include_directories(pcre2_funcs PRIVATE "${PROJECT_BINARY_DIR}")
 endif()
 
+check_symbol_exists(regcomp "regex.h" HAVE_REGCOMP)
+if(HAVE_REGCOMP)
+  add_library(posix_re_funcs MODULE posix_re_funcs.c)
+  set_target_properties(posix_re_funcs PROPERTIES C_STANDARD 99
+    C_STANDARD_REQUIRED ON)
+  target_include_directories(posix_re_funcs PRIVATE "${PROJECT_BINARY_DIR}")
+endif()
+
 add_library(math_funcs MODULE math_funcs.c)
 set_target_properties(math_funcs PROPERTIES C_STANDARD 99
   C_STANDARD_REQUIRED ON)

@@ -13,6 +13,7 @@ in the *docs/* directory for details on individual extensions.
 * **math_funcs** - Assorted floating-point functions.
 * **blob_funcs** - Assorted functions that act on blobs.
 * **pcre2_funcs** - Regular expressions using PCRE2
+* **posix_re_funcs** - Regular expressions using POSIX Extended and Basic syntax.
 * **json_funcs** - Extra JSON functions.
 * **bloom_filter1** - Bloom filter indexes.
 

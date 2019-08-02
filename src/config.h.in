@@ -5,4 +5,4 @@
 #cmakedefine HAVE_PCRE2_16
 #cmakedefine CMAKE_USE_PTHREADS_INIT
 #cmakedefine ZLIB_FOUND
-
+#cmakedefine HAVE_REGCOMP
