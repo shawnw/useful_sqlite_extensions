@@ -339,6 +339,10 @@ static void json_contains_path(sqlite3_context *ctx, int nargs,
   cJSON_Delete(orig);
 }
 
+static void *my_cjson_malloc(size_t sz) {
+  return sqlite3_malloc64(sz);
+}
+
 #ifdef _WIN32
 __declspec(export)
 #endif
@@ -358,7 +362,8 @@ __declspec(export)
                     {"json_keys", 2, json_keys},
                     {"json_contains_path", 2, json_contains_path},
                     {NULL, 0, NULL}};
-
+  cJSON_Hooks memhooks = { my_cjson_malloc, sqlite3_free };
+  cJSON_InitHooks(&memhooks);
   for (int i = 0; func_table[i].name; i += 1) {
     int r = sqlite3_create_function(db, func_table[i].name, func_table[i].args,
                                     SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL,
