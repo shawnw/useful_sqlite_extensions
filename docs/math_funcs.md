@@ -74,6 +74,12 @@ Other
 Aggregate Functions
 ===================
 
+Math
+----
+
+* PRODUCT(d) -- compute the product of a group. Can be used as a
+  window function.
+
 Bitwise
 -------
 

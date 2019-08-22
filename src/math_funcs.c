@@ -335,6 +335,57 @@ static void mf_bitcount_sw(sqlite3_context *ctx,
 
 /* Aggregate functions */
 
+struct prod_agg {
+  double val;
+  sqlite3_int64 count;
+};
+
+static void
+mf_prod_step(sqlite3_context *p, int nArg __attribute__((unused)),
+             sqlite3_value **apArg) {
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL) {
+    return;
+  }
+
+  struct prod_agg *prod = sqlite3_aggregate_context(p, sizeof *prod);
+  if (!prod) {
+    sqlite3_result_error_nomem(p);
+    return;
+  }
+
+  if (!prod->count) {
+    prod->val = sqlite3_value_double(apArg[0]);
+    prod->count = 1;
+  } else {
+    prod->val *= sqlite3_value_double(apArg[0]);
+    prod->count += 1;
+  }
+}
+
+static void mf_prod_final(sqlite3_context *p) {
+  struct prod_agg *prod = sqlite3_aggregate_context(p, 0);
+  if (!prod || !prod->count) {
+    return;
+  }
+  sqlite3_result_double(p, prod->val);
+}
+
+static void mf_prod_inverse(sqlite3_context *p,
+                            int nArg __attribute__((unused)),
+                            sqlite3_value **apArg) {
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL) {
+    return;
+  }
+
+  struct prod_agg *prod = sqlite3_aggregate_context(p, 0);
+  if (!prod) {
+    return;
+  }
+  prod->val /= sqlite3_value_double(apArg[0]);
+  prod->count -= 1;
+}
+
 struct bit_agg {
   sqlite3_uint64 val;
   _Bool init;
@@ -984,6 +1035,8 @@ __declspec(dllexport)
     void (*xValue)(sqlite3_context *);
     void (*xInverse)(sqlite3_context *, int, sqlite3_value **);
   } aggs[] = {
+      {"product", 1, mf_prod_step, mf_prod_final, mf_prod_final,
+       mf_prod_inverse},
       {"bit_or", 1, mf_bit_or_step, mf_bit_final, NULL, NULL},
       {"bit_xor", 1, mf_bit_xor_step, mf_bit_final, mf_bit_final,
        mf_bit_xor_step},
