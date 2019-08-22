@@ -39,16 +39,24 @@ use Getopt::Long;
 use Pod::Usage;
 
 my $temp_table = 0;
+my $use_spaces = 0;
 my $help = 0;
 GetOptions('t' => \$temp_table,
+           's' => \$use_spaces,
            'help' => \$help);
 pod2usage(1) if $help;
 
-my $strip_pipes = qr/(?:^\s*\|\s*) # Leading pipe and whitespace
-                   |
-                     (?:\s*\|\s*$) # Trailing pipe and whitespace
-                    /x;
-my $pipes = qr/\s*\|\s*/;
+my $strip_pipes;
+if ($use_spaces) {
+    $strip_pipes = qr/^\s+|\s+$/;
+} else {
+    $strip_pipes = qr/(?:^\s*\|\s*) # Leading pipe and whitespace
+        |
+        (?:\s*\|\s*$) # Trailing pipe and whitespace
+         /x;
+}
+
+my $pipes = $use_spaces ? qr/\s+/ : qr/\s*\|\s*/;
 $" = ',';
 
 my $table = shift // 'mytable';
@@ -87,6 +95,10 @@ table2sql [OPTIONS] [TABLE NAME] [TABLE FILE]
 =head1 OPTIONS
 
 =over 4
+
+=item B<-s>
+
+Use whitespace instead of pipes as column delimiters.
 
 =item B<-t>
 
