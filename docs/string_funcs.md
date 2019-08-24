@@ -57,6 +57,7 @@ an integer or string.
 ### GCLENGTH()
 
 * GCLENGTH(string)
+* GCLENGTH(string, locale)
 
 Returns the number of [extended grapheme clusters] in `string`. This
 will be less than or equal to `LENGTH(string)`, which returns the
@@ -118,33 +119,81 @@ fast when it comes to Unicode. The following functions consider
 characters to be [extended grapheme clusters], which means they
 *usually* do what people expect.
 
-### GCLEFT()
+### Scalar Functions
+
+#### GCLEFT()
 
 * GCLEFT(string, len)
+* GCLEFT(string, len, locale)
 
 Returns the first `len` [extended grapheme clusters] from `string`.
 
 If `len` is negative, returns all but the last `abs(len)` clusters.
 
-### GCRIGHT()
+#### GCRIGHT()
 
 * GCRIGHT(string, len)
+* GCRIGHT(string, len, locale)
 
 Returns the last `len` [extended grapheme clusters] from `string`.
 
 If `len` is negative, returns all but the first `abs(len)` clusters.
 
-### GCSUBSTR()
+#### GCSUBSTR()
 
 * GCSUBSTR(string, start, len)
 * GCSUBSTR(string, start)
+* GCSUBSTR(string, start, len, locale)
 
 The `GCSUBSTR(string, start, len)` function returns a substring of
 input `string` that begins with the `start`-th extended grapheme
-cluster and which is `len` clusters long. If `len` is omitted then
+cluster and which is `len` clusters long. If `len` is omitted or -1 then
 `GCSUBSTR(string, start)` returns all clusters through the end of the
 string beginning with the `start`-th. The left-most cluster of
 `string` is number 1.
+
+### Table Valued Functions
+
+These functions use Unicode breaking algorithms from UAX#29 to split a
+string into its component tokens, one row per token. Each row has
+three columns: `value`, a string holding the token, `start`, the
+offset of the starting code point in the original string (The first
+codepoint is index 1), and `len`, the length of the token in code
+points. `substr(original, start, len)` will thus equal `value`.
+
+#### GRAPHEMES()
+
+* GRAPHEMES(string)
+* GRAPHEMES(string, locale)
+
+Splits its argument up into individual extended grapheme clusters,
+optionally using a specific locale's rules.
+
+#### WORDS()
+
+* WORDS(string)
+* WORDS(string, locale)
+
+Splits its argument into words, and the gaps betweens words,
+optionally using a specific locale's rules.
+
+To get only words, filter for only odd `rowid`s (Assuming the string
+starts with a word and not whitespace).
+
+#### SENTENCES()
+
+* SENTENCES(string)
+* SENTENCES(string, locale)
+
+Splits its argument into sentences.
+
+#### LINES()
+
+* LINES(string)
+* LINES(string, locale)
+
+Splits its argument up into good spots for line breaks per UAX#14.
+
 
 Normalization
 -------------

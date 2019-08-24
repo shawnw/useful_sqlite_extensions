@@ -123,7 +123,7 @@ static uint32_t parse_re_options(const unsigned char *zOptions, int *group) {
 ** The scalar function context passed as the first argument is
 ** loaded with an error message based on the following two args.
 */
-static void
+void
 icuFunctionError(sqlite3_context *pCtx, /* SQLite scalar function context */
                  const char *zName,     /* Name of ICU function that failed */
                  UErrorCode e /* Error code returned by ICU function */
@@ -2128,7 +2128,7 @@ static int sqlite3IcuExtInitFuncs(sqlite3 *db) {
 }
 
 extern int sf_more_init(sqlite3 *);
-extern int sf_egc_init(sqlite3 *);
+extern int sf_egc_init(sqlite3 *, char **);
 
 #ifdef _WIN32
 __declspec(dllexport)
@@ -2162,7 +2162,7 @@ __declspec(dllexport)
     return rc;
   }
 
-  rc = sf_egc_init(db);
+  rc = sf_egc_init(db, pzErrMsg);
   if (rc != SQLITE_OK) {
     return rc;
   }

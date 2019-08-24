@@ -68,6 +68,7 @@
 <h3 id="gclength">GCLENGTH()</h3>
 <ul>
 <li>GCLENGTH(string)</li>
+<li>GCLENGTH(string, locale)</li>
 </ul>
 <p>Returns the number of <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a> in <code>string</code>. This will be less than or equal to <code>LENGTH(string)</code>, which returns the number of <em>code points</em>.</p>
 <h2 id="case-mapping">Case Mapping</h2>
@@ -100,24 +101,55 @@
 <h2 id="text-extraction">Text Extraction</h2>
 <p>Sqlite3 provides one function, <code>SUBSTR()</code>, for extracting text from a string. It has the major drawback that it treats one Unicode code point as one character. As soon as you start getting outside of the Latin characters (And even in them if dealing with text in NFD format), that’s not true. It’s very easy to cut off a base character’s following combining characters, for example, with undesirable results.</p>
 <p>The entire question of “What is a character?” gets very complicated fast when it comes to Unicode. The following functions consider characters to be <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a>, which means they <em>usually</em> do what people expect.</p>
-<h3 id="gcleft">GCLEFT()</h3>
+<h3 id="scalar-functions-1">Scalar Functions</h3>
+<h4 id="gcleft">GCLEFT()</h4>
 <ul>
 <li>GCLEFT(string, len)</li>
+<li>GCLEFT(string, len, locale)</li>
 </ul>
 <p>Returns the first <code>len</code> <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a> from <code>string</code>.</p>
 <p>If <code>len</code> is negative, returns all but the last <code>abs(len)</code> clusters.</p>
-<h3 id="gcright">GCRIGHT()</h3>
+<h4 id="gcright">GCRIGHT()</h4>
 <ul>
 <li>GCRIGHT(string, len)</li>
+<li>GCRIGHT(string, len, locale)</li>
 </ul>
 <p>Returns the last <code>len</code> <a href="http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries">extended grapheme clusters</a> from <code>string</code>.</p>
 <p>If <code>len</code> is negative, returns all but the first <code>abs(len)</code> clusters.</p>
-<h3 id="gcsubstr">GCSUBSTR()</h3>
+<h4 id="gcsubstr">GCSUBSTR()</h4>
 <ul>
 <li>GCSUBSTR(string, start, len)</li>
 <li>GCSUBSTR(string, start)</li>
+<li>GCSUBSTR(string, start, len, locale)</li>
 </ul>
-<p>The <code>GCSUBSTR(string, start, len)</code> function returns a substring of input <code>string</code> that begins with the <code>start</code>-th extended grapheme cluster and which is <code>len</code> clusters long. If <code>len</code> is omitted then <code>GCSUBSTR(string, start)</code> returns all clusters through the end of the string beginning with the <code>start</code>-th. The left-most cluster of <code>string</code> is number 1.</p>
+<p>The <code>GCSUBSTR(string, start, len)</code> function returns a substring of input <code>string</code> that begins with the <code>start</code>-th extended grapheme cluster and which is <code>len</code> clusters long. If <code>len</code> is omitted or -1 then <code>GCSUBSTR(string, start)</code> returns all clusters through the end of the string beginning with the <code>start</code>-th. The left-most cluster of <code>string</code> is number 1.</p>
+<h3 id="table-valued-functions">Table Valued Functions</h3>
+<p>These functions use Unicode breaking algorithms from UAX#29 to split a string into its component tokens, one row per token. Each row has three columns: <code>value</code>, a string holding the token, <code>start</code>, the offset of the starting code point in the original string (The first codepoint is index 1), and <code>len</code>, the length of the token in code points. <code>substr(original, start, len)</code> will thus equal <code>value</code>.</p>
+<h4 id="graphemes">GRAPHEMES()</h4>
+<ul>
+<li>GRAPHEMES(string)</li>
+<li>GRAPHEMES(string, locale)</li>
+</ul>
+<p>Splits its argument up into individual extended grapheme clusters, optionally using a specific locale’s rules.</p>
+<h4 id="words">WORDS()</h4>
+<ul>
+<li>WORDS(string)</li>
+<li>WORDS(string, locale)</li>
+</ul>
+<p>Splits its argument into words, and the gaps betweens words, optionally using a specific locale’s rules.</p>
+<p>To get only words, filter for only odd <code>rowid</code>s (Assuming the string starts with a word and not whitespace).</p>
+<h4 id="sentences">SENTENCES()</h4>
+<ul>
+<li>SENTENCES(string)</li>
+<li>SENTENCES(string, locale)</li>
+</ul>
+<p>Splits its argument into sentences.</p>
+<h4 id="lines">LINES()</h4>
+<ul>
+<li>LINES(string)</li>
+<li>LINES(string, locale)</li>
+</ul>
+<p>Splits its argument up into good spots for line breaks per UAX#14.</p>
 <h2 id="normalization">Normalization</h2>
 <p>Functions for normalizing Unicode text, and normalized concatentation (Since naive joining of two normalized Unicode strings can produce a non-normalized string. Yay Unicode!).</p>
 <p>To-Do: Aggregate versions?</p>
