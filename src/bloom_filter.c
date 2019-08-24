@@ -54,142 +54,142 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ROTL(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
 
 #define U32TO8_LE(p, v)                                                        \
-    (p)[0] = (uint8_t)((v));                                                   \
-    (p)[1] = (uint8_t)((v) >> 8);                                              \
-    (p)[2] = (uint8_t)((v) >> 16);                                             \
-    (p)[3] = (uint8_t)((v) >> 24);
+  (p)[0] = (uint8_t)((v));                                                     \
+  (p)[1] = (uint8_t)((v) >> 8);                                                \
+  (p)[2] = (uint8_t)((v) >> 16);                                               \
+  (p)[3] = (uint8_t)((v) >> 24);
 
 #define U64TO8_LE(p, v)                                                        \
-    U32TO8_LE((p), (uint32_t)((v)));                                           \
-    U32TO8_LE((p) + 4, (uint32_t)((v) >> 32));
+  U32TO8_LE((p), (uint32_t)((v)));                                             \
+  U32TO8_LE((p) + 4, (uint32_t)((v) >> 32));
 
 #define U8TO64_LE(p)                                                           \
-    (((uint64_t)((p)[0])) | ((uint64_t)((p)[1]) << 8) |                        \
-     ((uint64_t)((p)[2]) << 16) | ((uint64_t)((p)[3]) << 24) |                 \
-     ((uint64_t)((p)[4]) << 32) | ((uint64_t)((p)[5]) << 40) |                 \
-     ((uint64_t)((p)[6]) << 48) | ((uint64_t)((p)[7]) << 56))
+  (((uint64_t)((p)[0])) | ((uint64_t)((p)[1]) << 8) |                          \
+   ((uint64_t)((p)[2]) << 16) | ((uint64_t)((p)[3]) << 24) |                   \
+   ((uint64_t)((p)[4]) << 32) | ((uint64_t)((p)[5]) << 40) |                   \
+   ((uint64_t)((p)[6]) << 48) | ((uint64_t)((p)[7]) << 56))
 
 #define SIPROUND                                                               \
-    do {                                                                       \
-        v0 += v1;                                                              \
-        v1 = ROTL(v1, 13);                                                     \
-        v1 ^= v0;                                                              \
-        v0 = ROTL(v0, 32);                                                     \
-        v2 += v3;                                                              \
-        v3 = ROTL(v3, 16);                                                     \
-        v3 ^= v2;                                                              \
-        v0 += v3;                                                              \
-        v3 = ROTL(v3, 21);                                                     \
-        v3 ^= v0;                                                              \
-        v2 += v1;                                                              \
-        v1 = ROTL(v1, 17);                                                     \
-        v1 ^= v2;                                                              \
-        v2 = ROTL(v2, 32);                                                     \
-    } while (0)
+  do {                                                                         \
+    v0 += v1;                                                                  \
+    v1 = ROTL(v1, 13);                                                         \
+    v1 ^= v0;                                                                  \
+    v0 = ROTL(v0, 32);                                                         \
+    v2 += v3;                                                                  \
+    v3 = ROTL(v3, 16);                                                         \
+    v3 ^= v2;                                                                  \
+    v0 += v3;                                                                  \
+    v3 = ROTL(v3, 21);                                                         \
+    v3 ^= v0;                                                                  \
+    v2 += v1;                                                                  \
+    v1 = ROTL(v1, 17);                                                         \
+    v1 ^= v2;                                                                  \
+    v2 = ROTL(v2, 32);                                                         \
+  } while (0)
 
 #ifdef DEBUG
 #define TRACE                                                                  \
-    do {                                                                       \
-        printf("(%3d) v0 %08x %08x\n", (int)inlen, (uint32_t)(v0 >> 32),       \
-               (uint32_t)v0);                                                  \
-        printf("(%3d) v1 %08x %08x\n", (int)inlen, (uint32_t)(v1 >> 32),       \
-               (uint32_t)v1);                                                  \
-        printf("(%3d) v2 %08x %08x\n", (int)inlen, (uint32_t)(v2 >> 32),       \
-               (uint32_t)v2);                                                  \
-        printf("(%3d) v3 %08x %08x\n", (int)inlen, (uint32_t)(v3 >> 32),       \
-               (uint32_t)v3);                                                  \
-    } while (0)
+  do {                                                                         \
+    printf("(%3d) v0 %08x %08x\n", (int)inlen, (uint32_t)(v0 >> 32),           \
+           (uint32_t)v0);                                                      \
+    printf("(%3d) v1 %08x %08x\n", (int)inlen, (uint32_t)(v1 >> 32),           \
+           (uint32_t)v1);                                                      \
+    printf("(%3d) v2 %08x %08x\n", (int)inlen, (uint32_t)(v2 >> 32),           \
+           (uint32_t)v2);                                                      \
+    printf("(%3d) v3 %08x %08x\n", (int)inlen, (uint32_t)(v3 >> 32),           \
+           (uint32_t)v3);                                                      \
+  } while (0)
 #else
 #define TRACE
 #endif
 
 static int siphash(const uint8_t *in, const size_t inlen, const uint8_t *k,
-            uint8_t *out, const size_t outlen) {
+                   uint8_t *out, const size_t outlen) {
 
-    assert((outlen == 8) || (outlen == 16));
-    uint64_t v0 = 0x736f6d6570736575ULL;
-    uint64_t v1 = 0x646f72616e646f6dULL;
-    uint64_t v2 = 0x6c7967656e657261ULL;
-    uint64_t v3 = 0x7465646279746573ULL;
-    uint64_t k0 = U8TO64_LE(k);
-    uint64_t k1 = U8TO64_LE(k + 8);
-    uint64_t m;
-    int i;
-    const uint8_t *end = in + inlen - (inlen % sizeof(uint64_t));
-    const int left = inlen & 7;
-    uint64_t b = ((uint64_t)inlen) << 56;
-    v3 ^= k1;
-    v2 ^= k0;
-    v1 ^= k1;
-    v0 ^= k0;
+  assert((outlen == 8) || (outlen == 16));
+  uint64_t v0 = 0x736f6d6570736575ULL;
+  uint64_t v1 = 0x646f72616e646f6dULL;
+  uint64_t v2 = 0x6c7967656e657261ULL;
+  uint64_t v3 = 0x7465646279746573ULL;
+  uint64_t k0 = U8TO64_LE(k);
+  uint64_t k1 = U8TO64_LE(k + 8);
+  uint64_t m;
+  int i;
+  const uint8_t *end = in + inlen - (inlen % sizeof(uint64_t));
+  const int left = inlen & 7;
+  uint64_t b = ((uint64_t)inlen) << 56;
+  v3 ^= k1;
+  v2 ^= k0;
+  v1 ^= k1;
+  v0 ^= k0;
 
-    if (outlen == 16)
-        v1 ^= 0xee;
+  if (outlen == 16)
+    v1 ^= 0xee;
 
-    for (; in != end; in += 8) {
-        m = U8TO64_LE(in);
-        v3 ^= m;
-
-        TRACE;
-        for (i = 0; i < cROUNDS; ++i)
-            SIPROUND;
-
-        v0 ^= m;
-    }
-
-    switch (left) {
-    case 7:
-        b |= ((uint64_t)in[6]) << 48;
-    case 6:
-        b |= ((uint64_t)in[5]) << 40;
-    case 5:
-        b |= ((uint64_t)in[4]) << 32;
-    case 4:
-        b |= ((uint64_t)in[3]) << 24;
-    case 3:
-        b |= ((uint64_t)in[2]) << 16;
-    case 2:
-        b |= ((uint64_t)in[1]) << 8;
-    case 1:
-        b |= ((uint64_t)in[0]);
-        break;
-    case 0:
-        break;
-    }
-
-    v3 ^= b;
+  for (; in != end; in += 8) {
+    m = U8TO64_LE(in);
+    v3 ^= m;
 
     TRACE;
     for (i = 0; i < cROUNDS; ++i)
-        SIPROUND;
+      SIPROUND;
 
-    v0 ^= b;
+    v0 ^= m;
+  }
 
-    if (outlen == 16)
-        v2 ^= 0xee;
-    else
-        v2 ^= 0xff;
+  switch (left) {
+  case 7:
+    b |= ((uint64_t)in[6]) << 48;
+  case 6:
+    b |= ((uint64_t)in[5]) << 40;
+  case 5:
+    b |= ((uint64_t)in[4]) << 32;
+  case 4:
+    b |= ((uint64_t)in[3]) << 24;
+  case 3:
+    b |= ((uint64_t)in[2]) << 16;
+  case 2:
+    b |= ((uint64_t)in[1]) << 8;
+  case 1:
+    b |= ((uint64_t)in[0]);
+    break;
+  case 0:
+    break;
+  }
 
-    TRACE;
-    for (i = 0; i < dROUNDS; ++i)
-        SIPROUND;
+  v3 ^= b;
 
-    b = v0 ^ v1 ^ v2 ^ v3;
-    U64TO8_LE(out, b);
+  TRACE;
+  for (i = 0; i < cROUNDS; ++i)
+    SIPROUND;
 
-    if (outlen == 8)
-        return 0;
+  v0 ^= b;
 
-    v1 ^= 0xdd;
+  if (outlen == 16)
+    v2 ^= 0xee;
+  else
+    v2 ^= 0xff;
 
-    TRACE;
-    for (i = 0; i < dROUNDS; ++i)
-        SIPROUND;
+  TRACE;
+  for (i = 0; i < dROUNDS; ++i)
+    SIPROUND;
 
-    b = v0 ^ v1 ^ v2 ^ v3;
-    U64TO8_LE(out + 8, b);
+  b = v0 ^ v1 ^ v2 ^ v3;
+  U64TO8_LE(out, b);
 
+  if (outlen == 8)
     return 0;
+
+  v1 ^= 0xdd;
+
+  TRACE;
+  for (i = 0; i < dROUNDS; ++i)
+    SIPROUND;
+
+  b = v0 ^ v1 ^ v2 ^ v3;
+  U64TO8_LE(out + 8, b);
+
+  return 0;
 }
 
 #include <sqlite3ext.h>
@@ -199,9 +199,7 @@ static inline sqlite3_uint64 compute_bits(sqlite3_uint64 n, double p) {
   return ceil(-((n * log(p)) / (log(2.0) * log(2.0))));
 }
 
-static inline int compute_k(double p) {
-  return round(-log2(p));
-}
+static inline int compute_k(double p) { return round(-log2(p)); }
 
 static inline int compute_bytes(sqlite3_uint64 bits) {
   int quo = bits / 8;
@@ -238,7 +236,11 @@ struct sqlite3_module bf_module = {
     1,        bf_create, bf_connect, bf_bestindex, bf_disconnect, bf_destroy,
     bf_open,  bf_close,  bf_filter,  bf_next,      bf_eof,        bf_column,
     bf_rowid, bf_update, NULL,       NULL,         NULL,          NULL,
-    NULL,     bf_rename, NULL,       NULL,         NULL};
+    NULL,     bf_rename, NULL,       NULL,         NULL,
+#if SQLITE_VERSION_NUMBER >= 3026000
+    NULL, // xShadowName
+#endif
+};
 
 struct bf_vtab {
   const sqlite3_module *pModule;
@@ -295,9 +297,10 @@ static int bf_create(sqlite3 *db, void *pAux __attribute__((unused)), int argc,
     vtab->k = compute_k(vtab->p);
   }
 
-  char *storage = sqlite3_mprintf("CREATE TABLE \"%s\".\"%s_storage\"(data "
-                                  "BLOB, p REAL, n INTEGER, m INTEGER, k INTEGER)",
-                                  argv[1], argv[2]);
+  char *storage =
+      sqlite3_mprintf("CREATE TABLE \"%s\".\"%s_storage\"(data "
+                      "BLOB, p REAL, n INTEGER, m INTEGER, k INTEGER)",
+                      argv[1], argv[2]);
   int rc = sqlite3_exec(db, storage, NULL, NULL, pzErr);
   sqlite3_free(storage);
   if (rc != SQLITE_OK) {
@@ -305,10 +308,11 @@ static int bf_create(sqlite3 *db, void *pAux __attribute__((unused)), int argc,
     return rc;
   }
 
-  storage = sqlite3_mprintf("INSERT INTO \"%s\".\"%s_storage\"(rowid, data, p, n, m, "
-                            "k) VALUES (1, ?, %f, %d, %llu, %d)",
-                            argv[1], argv[2], vtab->p, nElems,
-                            (sqlite3_uint64)vtab->nFilter * 8, vtab->k);
+  storage =
+      sqlite3_mprintf("INSERT INTO \"%s\".\"%s_storage\"(rowid, data, p, n, m, "
+                      "k) VALUES (1, ?, %f, %d, %llu, %d)",
+                      argv[1], argv[2], vtab->p, nElems,
+                      (sqlite3_uint64)vtab->nFilter * 8, vtab->k);
 
   sqlite3_stmt *inserter;
   rc = sqlite3_prepare_v2(db, storage, -1, &inserter, NULL);
@@ -329,7 +333,8 @@ static int bf_create(sqlite3 *db, void *pAux __attribute__((unused)), int argc,
   rc = sqlite3_declare_vtab(db, "CREATE TABLE x(present, word HIDDEN "
                                 "NOT NULL PRIMARY KEY) WITHOUT ROWID");
   if (rc != SQLITE_OK) {
-    storage = sqlite3_mprintf("DROP TABLE \"%s\".\"%s_storage\"", argv[1], argv[2]);
+    storage =
+        sqlite3_mprintf("DROP TABLE \"%s\".\"%s_storage\"", argv[1], argv[2]);
     sqlite3_exec(db, storage, NULL, NULL, NULL);
     sqlite3_free(storage);
     sqlite3_free(vtab);
@@ -384,9 +389,9 @@ static int bf_connect(sqlite3 *db, void *pAux __attribute__((unused)),
     return rc;
   }
 
-  char *load_query =
-      sqlite3_mprintf("SELECT m/8, p, k FROM \"%s\".\"%s_storage\" WHERE rowid = 1",
-                      argv[1], argv[2]);
+  char *load_query = sqlite3_mprintf(
+      "SELECT m/8, p, k FROM \"%s\".\"%s_storage\" WHERE rowid = 1", argv[1],
+      argv[2]);
   if (!load_query) {
     sqlite3_free(vtab);
     return SQLITE_NOMEM;
@@ -469,8 +474,8 @@ static int bf_disconnect(struct sqlite3_vtab *pVTab) {
 static int bf_destroy(struct sqlite3_vtab *pVTab) {
   struct bf_vtab *vtab = (struct bf_vtab *)pVTab;
 
-  char *deleter =
-      sqlite3_mprintf("DROP TABLE \"%s\".\"%s\"", vtab->zDBName, vtab->zStorage);
+  char *deleter = sqlite3_mprintf("DROP TABLE \"%s\".\"%s\"", vtab->zDBName,
+                                  vtab->zStorage);
   int rc = sqlite3_exec(vtab->db, deleter, NULL, NULL, NULL);
   sqlite3_free(deleter);
   if (rc != SQLITE_OK) {
@@ -673,7 +678,7 @@ static int bf_rename(sqlite3_vtab *pVTab, const char *zNew) {
     }
     sqlite3_free(vtab->zStorage);
     vtab->zStorage = sqlite3_mprintf("%s_storage", zNew);
-    if (!vtab->zStorage) {      
+    if (!vtab->zStorage) {
       return SQLITE_NOMEM;
     }
   }
