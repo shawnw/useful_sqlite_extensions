@@ -340,7 +340,9 @@ struct numarray {
   double *arr;
   size_t capacity;
   size_t used;
+  double mean;
   _Bool sorted;
+  _Bool mean_calc;
   _Bool init;
 };
 
@@ -353,6 +355,7 @@ static _Bool init_numarray(struct numarray *da) {
   da->used = 0;
   da->capacity = 10;
   da->sorted = 0;
+  da->mean_calc = 0;
   da->init = 1;
   return 1;
 }
@@ -375,16 +378,23 @@ static _Bool add_dbl(struct numarray *da, double d) {
   }
   da->arr[da->used++] = d;
   da->sorted = 0;
+  da->mean_calc = 0;
   return 1;
+}
+
+static void del_dbl_idx(struct numarray *da, size_t i) {
+  assert(da);
+  assert(i < da->used);
+  memmove(da->arr + i, da->arr + i + 1, sizeof(double) * (da->used - i - 1));
+  da->used -= 1;
+  da->mean_calc = 0;
 }
 
 static _Bool del_dbl(struct numarray *da, double d) {
   assert(da);
   for (size_t i = 0; i < da->used; i += 1) {
     if (da->arr[i] == d) {
-      memmove(da->arr + i, da->arr + i + 1,
-              sizeof(double) * (da->used - i - 1));
-      da->used -= 1;
+      del_dbl_idx(da, i);
       return 1;
     }
   }
@@ -414,12 +424,18 @@ static void sort_numarray(struct numarray *da) {
 
 static double mean_numarray(struct numarray *da) {
   assert(da);
+  if (da->mean_calc) {
+    return da->mean;
+  }
+
   double m = 0.0;
   sort_numarray(da);
   for (size_t i = 0; i < da->used; i += 1) {
     m += da->arr[i];
   }
-  return m / da->used;
+  da->mean = m / da->used;
+  da->mean_calc = 1;
+  return da->mean;
 }
 
 static void mf_numarray_step(sqlite3_context *ctx,
@@ -804,6 +820,110 @@ static void mf_var_pop_value(sqlite3_context *ctx) {
   sqlite3_result_double(ctx, var_calc_pop(v));
 }
 
+struct cc_data {
+  struct numarray x;
+  struct numarray y;
+};
+
+static double corr_coff_calc(struct cc_data *cc) {
+  double mx = mean_numarray(&cc->x);
+  double my = mean_numarray(&cc->y);
+  double sx = stddev_calc_samp(&cc->x);
+  double sy = stddev_calc_samp(&cc->y);
+  double r = 0.0;
+
+  for (size_t i = 0; i < cc->x.used; i += 1) {
+    double zx = (cc->x.arr[i] - mx) / sx;
+    double zy = (cc->y.arr[i] - my) / sy;
+    r += zx * zy;
+  }
+
+  return r / (cc->x.used - 1);
+}
+
+static void mf_corr_step(sqlite3_context *ctx,
+                         int nArgs __attribute__((unused)),
+                         sqlite3_value **apArg) {
+  assert(nArgs == 2);
+  struct cc_data *cc = sqlite3_aggregate_context(ctx, sizeof *cc);
+  if (!cc) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  if (!cc->x.init) {
+    if (!init_numarray(&cc->x)) {
+      sqlite3_result_error_nomem(ctx);
+      return;
+    }
+    if (!init_numarray(&cc->y)) {
+      free_numarray(&cc->x);
+      sqlite3_result_error_nomem(ctx);
+      return;
+    }
+  }
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  add_dbl(&cc->x, sqlite3_value_double(apArg[0]));
+  add_dbl(&cc->y, sqlite3_value_double(apArg[1]));
+}
+
+static void mf_corr_final(sqlite3_context *ctx) {
+  struct cc_data *cc = sqlite3_aggregate_context(ctx, 0);
+  if (!cc) {
+    return;
+  }
+
+  if (!cc->x.init || cc->x.used <= 1) {
+    return;
+  }
+  sqlite3_result_double(ctx, corr_coff_calc(cc));
+  free_numarray(&cc->x);
+  free_numarray(&cc->y);
+}
+
+static void mf_corr_value(sqlite3_context *ctx) {
+  struct cc_data *cc = sqlite3_aggregate_context(ctx, 0);
+  if (!cc) {
+    return;
+  }
+
+  if (!cc->x.init || cc->x.used <= 1) {
+    return;
+  }
+  sqlite3_result_double(ctx, corr_coff_calc(cc));
+}
+
+static void mf_corr_inverse(sqlite3_context *ctx,
+                            int nArgs __attribute__((unused)),
+                            sqlite3_value **apArg) {
+  assert(nArgs == 2);
+  struct cc_data *cc = sqlite3_aggregate_context(ctx, 0);
+  if (!cc) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  double x = sqlite3_value_double(apArg[0]);
+  double y = sqlite3_value_double(apArg[1]);
+
+  for (size_t i = 0; i < cc->x.used; i += 1) {
+    if (cc->x.arr[i] == x && cc->y.arr[i] == y) {
+      del_dbl_idx(&cc->x, i);
+      del_dbl_idx(&cc->y, i);
+      return;
+    }
+  }
+}
+
 struct mean {
   double total;
   size_t n;
@@ -1163,7 +1283,7 @@ __declspec(dllexport)
        mf_numarray_inverse},
       {"iqr", 1, mf_numarray_step, mf_iqr_final, mf_iqr_value,
        mf_numarray_inverse},
-
+      {"corr", 2, mf_corr_step, mf_corr_final, mf_corr_value, mf_corr_inverse},
   };
   int rc = SQLITE_OK;
 

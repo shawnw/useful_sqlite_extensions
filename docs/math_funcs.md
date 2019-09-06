@@ -92,6 +92,7 @@ Statistics
 
 All of these can be used as window functions.
 
+* CORR(d, d) -- Correlation coefficient.
 * COVAR_POP(d, d) -- Population covariance. 
 * COVAR_SAMP(d, d) -- Sample covariance. 
 * STDDEV_POP(d) -- Population standard deviation.
