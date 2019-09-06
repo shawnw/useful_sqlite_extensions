@@ -90,16 +90,18 @@ Bitwise
 Statistics
 ----------
 
-* COVAR_POP(d, d) -- Population covariance. Can be used as a window function
-* COVAR_SAMP(d, d) -- Sample covariance. Can be used as a window function
-* STDDEV_POP(d) -- Population standard deviation
-* STDDEV_SAMP(d) -- Sample standard deviation
-* VAR_POP(d) -- Population variance
-* VAR_SAMP(d) -- Sample variance
-* GEO_MEAN(d) -- Geometric mean. Can be used as a window function
-* HARM_MEAN(d) -- Harmonic mean. Can be used as a window function.
-* MEDIAN(d) -- Can be used as a window function.
-* MODE(d) -- Can be used as a window function.
-* Q1(d) -- 1st Quartile Value. Can be used as a window function.
-* Q3(d) -- 3rd Quartile Value. Can be used as a window function.
-* IQR(d) -- Interquartile Range. Can be used as a window function.
+All of these can be used as window functions.
+
+* COVAR_POP(d, d) -- Population covariance. 
+* COVAR_SAMP(d, d) -- Sample covariance. 
+* STDDEV_POP(d) -- Population standard deviation.
+* STDDEV_SAMP(d) -- Sample standard deviation.
+* VAR_POP(d) -- Population variance.
+* VAR_SAMP(d) -- Sample variance.
+* GEO_MEAN(d) -- Geometric mean.
+* HARM_MEAN(d) -- Harmonic mean.
+* MEDIAN(d)
+* MODE(d)
+* Q1(d) -- 1st Quartile Value.
+* Q3(d) -- 3rd Quartile Value.
+* IQR(d) -- Interquartile Range.
