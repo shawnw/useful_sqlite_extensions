@@ -340,9 +340,8 @@ struct numarray {
   double *arr;
   size_t capacity;
   size_t used;
-  double mean;
+  double total;
   _Bool sorted;
-  _Bool mean_calc;
   _Bool init;
 };
 
@@ -355,7 +354,7 @@ static _Bool init_numarray(struct numarray *da) {
   da->used = 0;
   da->capacity = 10;
   da->sorted = 0;
-  da->mean_calc = 0;
+  da->total = 0.0;
   da->init = 1;
   return 1;
 }
@@ -378,16 +377,16 @@ static _Bool add_dbl(struct numarray *da, double d) {
   }
   da->arr[da->used++] = d;
   da->sorted = 0;
-  da->mean_calc = 0;
+  da->total += d;
   return 1;
 }
 
 static void del_dbl_idx(struct numarray *da, size_t i) {
   assert(da);
   assert(i < da->used);
+  da->total -= da->arr[i];
   memmove(da->arr + i, da->arr + i + 1, sizeof(double) * (da->used - i - 1));
   da->used -= 1;
-  da->mean_calc = 0;
 }
 
 static _Bool del_dbl(struct numarray *da, double d) {
@@ -424,18 +423,7 @@ static void sort_numarray(struct numarray *da) {
 
 static double mean_numarray(struct numarray *da) {
   assert(da);
-  if (da->mean_calc) {
-    return da->mean;
-  }
-
-  double m = 0.0;
-  sort_numarray(da);
-  for (size_t i = 0; i < da->used; i += 1) {
-    m += da->arr[i];
-  }
-  da->mean = m / da->used;
-  da->mean_calc = 1;
-  return da->mean;
+  return da->total / da->used;
 }
 
 static void mf_numarray_step(sqlite3_context *ctx,
@@ -478,6 +466,80 @@ static void mf_numarray_inverse(sqlite3_context *ctx,
   }
 
   del_dbl(m, sqlite3_value_double(apArg[0]));
+}
+
+struct pairarray {
+  struct numarray x;
+  struct numarray y;
+};
+
+static _Bool init_pairarray(struct pairarray *pa) {
+  if (init_numarray(&pa->x)) {
+    if (init_numarray(&pa->y)) {
+      return 1;
+    } else {
+      free_numarray(&pa->x);
+      return 0;
+    }
+  } else {
+    return 0;
+  }
+}
+
+static void free_pairarray(struct pairarray *pa) {
+  free_numarray(&pa->x);
+  free_numarray(&pa->y);
+}
+
+static void mf_pairarray_step(sqlite3_context *ctx,
+                              int nArgs __attribute__((unused)),
+                              sqlite3_value **apArg) {
+  assert(nArgs == 2);
+  struct pairarray *pa = sqlite3_aggregate_context(ctx, sizeof *pa);
+  if (!pa) {
+    sqlite3_result_error_nomem(ctx);
+    return;
+  }
+  if (!pa->x.init) {
+    if (!init_pairarray(pa)) {
+      sqlite3_result_error_nomem(ctx);
+      return;
+    }
+  }
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  add_dbl(&pa->x, sqlite3_value_double(apArg[0]));
+  add_dbl(&pa->y, sqlite3_value_double(apArg[1]));
+}
+
+static void mf_pairarray_inverse(sqlite3_context *ctx,
+                                 int nArgs __attribute__((unused)),
+                                 sqlite3_value **apArg) {
+  assert(nArgs == 2);
+  struct pairarray *pa = sqlite3_aggregate_context(ctx, 0);
+  if (!pa) {
+    return;
+  }
+
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  double x = sqlite3_value_double(apArg[0]);
+  double y = sqlite3_value_double(apArg[1]);
+
+  for (size_t i = 0; i < pa->x.used; i += 1) {
+    if (pa->x.arr[i] == x && pa->y.arr[i] == y) {
+      del_dbl_idx(&pa->x, i);
+      del_dbl_idx(&pa->y, i);
+      return;
+    }
+  }
 }
 
 struct prod_agg {
@@ -595,92 +657,63 @@ static void mf_bit_final(sqlite3_context *p) {
   }
 }
 
-struct covariance {
-  double xsum;
-  double ysum;
-  double xysum;
-  size_t n;
-  _Bool init;
-};
+static double calc_covar_samp(struct pairarray *cv) {
+  double mx = mean_numarray(&cv->x);
+  double my = mean_numarray(&cv->y);
+  double q = 0.0;
 
-static void mf_covar_step(sqlite3_context *ctx,
-                          int nArg __attribute__((unused)),
-                          sqlite3_value **apArg) {
-  struct covariance *cv = sqlite3_aggregate_context(ctx, sizeof *cv);
-  if (!cv) {
-    sqlite3_result_error_nomem(ctx);
-    return;
+  for (size_t i = 0; i < cv->x.used; i += 1) {
+    q += (cv->x.arr[i] - mx) * (cv->y.arr[i] - my);
   }
-  if (!cv->init) {
-    cv->ysum = 0.0;
-    cv->xsum = 0.0;
-    cv->xysum = 0.0;
-    cv->n = 0;
-    cv->init = 1;
-  }
-
-  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
-      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
-    return;
-  }
-
-  double y = sqlite3_value_double(apArg[0]);
-  double x = sqlite3_value_double(apArg[1]);
-
-  cv->ysum += y;
-  cv->xsum += x;
-  cv->xysum += x * y;
-  cv->n += 1;
+  return q / (cv->x.used - 1);
 }
 
-static void mf_covar_inverse(sqlite3_context *ctx,
-                             int nArg __attribute__((unused)),
-                             sqlite3_value **apArg) {
-  struct covariance *cv = sqlite3_aggregate_context(ctx, sizeof *cv);
-  if (!cv) {
-    sqlite3_result_error_nomem(ctx);
-    return;
-  }
-  if (!cv->init) {
-    cv->ysum = 0.0;
-    cv->xsum = 0.0;
-    cv->xysum = 0.0;
-    cv->n = 0;
-    cv->init = 1;
-  }
+static double calc_covar_pop(struct pairarray *cv) {
+  double mx = mean_numarray(&cv->x);
+  double my = mean_numarray(&cv->y);
+  double q = 0.0;
 
-  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
-      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
-    return;
+  for (size_t i = 0; i < cv->x.used; i += 1) {
+    q += (cv->x.arr[i] - mx) * (cv->y.arr[i] - my);
   }
-
-  double y = sqlite3_value_double(apArg[0]);
-  double x = sqlite3_value_double(apArg[1]);
-
-  cv->ysum -= y;
-  cv->xsum -= x;
-  cv->xysum -= x * y;
-  cv->n -= 1;
+  return q / cv->x.used;
 }
 
-static void mf_covar_samp(sqlite3_context *ctx) {
-  struct covariance *cv = sqlite3_aggregate_context(ctx, 0);
-  if (!cv || !cv->init || cv->n <= 1) {
+static void mf_covar_samp_value(sqlite3_context *ctx) {
+  struct pairarray *cv = sqlite3_aggregate_context(ctx, 0);
+  if (!cv || !cv->x.init || cv->x.used <= 1) {
     return;
   }
-  sqlite3_result_double(ctx, (cv->xysum - cv->ysum * cv->xsum / cv->n) /
-                                 (cv->n - 1));
+  sqlite3_result_double(ctx, calc_covar_samp(cv));
 }
 
-static void mf_covar_pop(sqlite3_context *ctx) {
-  struct covariance *cv = sqlite3_aggregate_context(ctx, 0);
-  if (!cv || !cv->init || cv->n == 0) {
+static void mf_covar_samp_final(sqlite3_context *ctx) {
+  struct pairarray *cv = sqlite3_aggregate_context(ctx, 0);
+  if (!cv || !cv->x.init || cv->x.used <= 1) {
     return;
   }
-  sqlite3_result_double(ctx, (cv->xysum - cv->ysum * cv->xsum / cv->n) / cv->n);
+  sqlite3_result_double(ctx, calc_covar_samp(cv));
+  free_pairarray(cv);
 }
 
-static double var_calc_pop(struct numarray *da) {
+static void mf_covar_pop_value(sqlite3_context *ctx) {
+  struct pairarray *cv = sqlite3_aggregate_context(ctx, 0);
+  if (!cv || !cv->x.init || cv->x.used == 0) {
+    return;
+  }
+  sqlite3_result_double(ctx, calc_covar_pop(cv));
+}
+
+static void mf_covar_pop_final(sqlite3_context *ctx) {
+  struct pairarray *cv = sqlite3_aggregate_context(ctx, 0);
+  if (!cv || !cv->x.init || cv->x.used == 0) {
+    return;
+  }
+  sqlite3_result_double(ctx, calc_covar_pop(cv));
+  free_pairarray(cv);
+}
+
+static double calc_var_pop(struct numarray *da) {
   if (da->used == 0) {
     return 0.0;
   }
@@ -695,7 +728,7 @@ static double var_calc_pop(struct numarray *da) {
   return q / da->used;
 }
 
-static double var_calc_samp(struct numarray *da) {
+static double calc_var_samp(struct numarray *da) {
   if (da->used <= 1) {
     return 0.0;
   }
@@ -710,12 +743,12 @@ static double var_calc_samp(struct numarray *da) {
   return q / (da->used - 1);
 }
 
-static double stddev_calc_pop(struct numarray *da) {
-  return sqrt(var_calc_pop(da));
+static double calc_stddev_pop(struct numarray *da) {
+  return sqrt(calc_var_pop(da));
 }
 
-static double stddev_calc_samp(struct numarray *da) {
-  return sqrt(var_calc_samp(da));
+static double calc_stddev_samp(struct numarray *da) {
+  return sqrt(calc_var_samp(da));
 }
 
 static void mf_stddev_samp_final(sqlite3_context *ctx) {
@@ -728,7 +761,7 @@ static void mf_stddev_samp_final(sqlite3_context *ctx) {
     return;
   }
 
-  sqlite3_result_double(ctx, stddev_calc_samp(v));
+  sqlite3_result_double(ctx, calc_stddev_samp(v));
   free_numarray(v);
 }
 
@@ -742,7 +775,7 @@ static void mf_stddev_samp_value(sqlite3_context *ctx) {
     return;
   }
 
-  sqlite3_result_double(ctx, stddev_calc_samp(v));
+  sqlite3_result_double(ctx, calc_stddev_samp(v));
 }
 
 static void mf_stddev_pop_final(sqlite3_context *ctx) {
@@ -754,7 +787,7 @@ static void mf_stddev_pop_final(sqlite3_context *ctx) {
   if (!v->init || v->used == 0) {
     return;
   }
-  sqlite3_result_double(ctx, stddev_calc_pop(v));
+  sqlite3_result_double(ctx, calc_stddev_pop(v));
   free_numarray(v);
 }
 
@@ -767,7 +800,7 @@ static void mf_stddev_pop_value(sqlite3_context *ctx) {
   if (!v->init || v->used == 0) {
     return;
   }
-  sqlite3_result_double(ctx, stddev_calc_pop(v));
+  sqlite3_result_double(ctx, calc_stddev_pop(v));
 }
 
 static void mf_var_samp_final(sqlite3_context *ctx) {
@@ -779,7 +812,7 @@ static void mf_var_samp_final(sqlite3_context *ctx) {
   if (!v->init || v->used == 0) {
     return;
   }
-  sqlite3_result_double(ctx, var_calc_samp(v));
+  sqlite3_result_double(ctx, calc_var_samp(v));
   free_numarray(v);
 }
 
@@ -792,7 +825,7 @@ static void mf_var_samp_value(sqlite3_context *ctx) {
   if (!v->init || v->used == 0) {
     return;
   }
-  sqlite3_result_double(ctx, var_calc_samp(v));
+  sqlite3_result_double(ctx, calc_var_samp(v));
 }
 
 static void mf_var_pop_final(sqlite3_context *ctx) {
@@ -804,7 +837,7 @@ static void mf_var_pop_final(sqlite3_context *ctx) {
   if (!v->init || v->used == 0) {
     return;
   }
-  sqlite3_result_double(ctx, var_calc_pop(v));
+  sqlite3_result_double(ctx, calc_var_pop(v));
   free_numarray(v);
 }
 
@@ -817,19 +850,14 @@ static void mf_var_pop_value(sqlite3_context *ctx) {
   if (!v->init || v->used == 0) {
     return;
   }
-  sqlite3_result_double(ctx, var_calc_pop(v));
+  sqlite3_result_double(ctx, calc_var_pop(v));
 }
 
-struct cc_data {
-  struct numarray x;
-  struct numarray y;
-};
-
-static double corr_coff_calc(struct cc_data *cc) {
+static double calc_corr_coff(struct pairarray *cc) {
   double mx = mean_numarray(&cc->x);
   double my = mean_numarray(&cc->y);
-  double sx = stddev_calc_samp(&cc->x);
-  double sy = stddev_calc_samp(&cc->y);
+  double sx = calc_stddev_samp(&cc->x);
+  double sy = calc_stddev_samp(&cc->y);
   double r = 0.0;
 
   for (size_t i = 0; i < cc->x.used; i += 1) {
@@ -841,38 +869,8 @@ static double corr_coff_calc(struct cc_data *cc) {
   return r / (cc->x.used - 1);
 }
 
-static void mf_corr_step(sqlite3_context *ctx,
-                         int nArgs __attribute__((unused)),
-                         sqlite3_value **apArg) {
-  assert(nArgs == 2);
-  struct cc_data *cc = sqlite3_aggregate_context(ctx, sizeof *cc);
-  if (!cc) {
-    sqlite3_result_error_nomem(ctx);
-    return;
-  }
-  if (!cc->x.init) {
-    if (!init_numarray(&cc->x)) {
-      sqlite3_result_error_nomem(ctx);
-      return;
-    }
-    if (!init_numarray(&cc->y)) {
-      free_numarray(&cc->x);
-      sqlite3_result_error_nomem(ctx);
-      return;
-    }
-  }
-
-  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
-      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
-    return;
-  }
-
-  add_dbl(&cc->x, sqlite3_value_double(apArg[0]));
-  add_dbl(&cc->y, sqlite3_value_double(apArg[1]));
-}
-
 static void mf_corr_final(sqlite3_context *ctx) {
-  struct cc_data *cc = sqlite3_aggregate_context(ctx, 0);
+  struct pairarray *cc = sqlite3_aggregate_context(ctx, 0);
   if (!cc) {
     return;
   }
@@ -880,13 +878,13 @@ static void mf_corr_final(sqlite3_context *ctx) {
   if (!cc->x.init || cc->x.used <= 1) {
     return;
   }
-  sqlite3_result_double(ctx, corr_coff_calc(cc));
+  sqlite3_result_double(ctx, calc_corr_coff(cc));
   free_numarray(&cc->x);
   free_numarray(&cc->y);
 }
 
 static void mf_corr_value(sqlite3_context *ctx) {
-  struct cc_data *cc = sqlite3_aggregate_context(ctx, 0);
+  struct pairarray *cc = sqlite3_aggregate_context(ctx, 0);
   if (!cc) {
     return;
   }
@@ -894,34 +892,224 @@ static void mf_corr_value(sqlite3_context *ctx) {
   if (!cc->x.init || cc->x.used <= 1) {
     return;
   }
-  sqlite3_result_double(ctx, corr_coff_calc(cc));
+  sqlite3_result_double(ctx, calc_corr_coff(cc));
 }
 
-static void mf_corr_inverse(sqlite3_context *ctx,
-                            int nArgs __attribute__((unused)),
-                            sqlite3_value **apArg) {
-  assert(nArgs == 2);
-  struct cc_data *cc = sqlite3_aggregate_context(ctx, 0);
-  if (!cc) {
-    sqlite3_result_error_nomem(ctx);
+static double calc_regr_slope(struct pairarray *regr) {
+  return calc_covar_pop(regr) / calc_var_pop(&regr->y);
+}
+
+static void mf_regr_slope_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
     return;
   }
 
-  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
-      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+  if (regr->x.used <= 1) {
     return;
   }
 
-  double x = sqlite3_value_double(apArg[0]);
-  double y = sqlite3_value_double(apArg[1]);
+  sqlite3_result_double(ctx, calc_regr_slope(regr));
+  free_pairarray(regr);
+}
 
-  for (size_t i = 0; i < cc->x.used; i += 1) {
-    if (cc->x.arr[i] == x && cc->y.arr[i] == y) {
-      del_dbl_idx(&cc->x, i);
-      del_dbl_idx(&cc->y, i);
-      return;
-    }
+static void mf_regr_slope_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
   }
+
+  if (regr->x.used <= 1) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, calc_regr_slope(regr));
+}
+
+static double calc_regr_intercept(struct pairarray *regr) {
+  return calc_regr_slope(regr) * mean_numarray(&regr->y);
+}
+
+static void mf_regr_intercept_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  if (regr->x.used <= 1) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, calc_regr_intercept(regr));
+  free_pairarray(regr);
+}
+
+static void mf_regr_intercept_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  if (regr->x.used <= 1) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, calc_regr_intercept(regr));
+}
+
+static void mf_regr_count_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_int64(ctx, regr->x.used);
+  free_pairarray(regr);
+}
+
+static void mf_regr_count_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_int64(ctx, regr->x.used);
+}
+
+static void calc_regr_r2(sqlite3_context *ctx, struct pairarray *regr) {
+  double vpy = calc_var_pop(&regr->y);
+  if (vpy == 0.0) {
+    return;
+  }
+  double vpx = calc_var_pop(&regr->x);
+  if (vpx == 0.0) {
+    sqlite3_result_int(ctx, 1);
+    return;
+  } else if (vpx > 0.0) {
+    double corr = calc_corr_coff(regr);
+    sqlite3_result_double(ctx, corr * corr);
+  }
+}
+
+static void mf_regr_r2_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  if (regr->x.used <= 1) {
+    return;
+  }
+  calc_regr_r2(ctx, regr);
+  free_pairarray(regr);
+}
+
+static void mf_regr_r2_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  if (regr->x.used <= 1) {
+    return;
+  }
+
+  calc_regr_r2(ctx, regr);
+}
+
+static void mf_regr_avgx_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, mean_numarray(&regr->y));
+  free_pairarray(regr);
+}
+
+static void mf_regr_avgx_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, mean_numarray(&regr->y));
+}
+
+static void mf_regr_avgy_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, mean_numarray(&regr->x));
+  free_pairarray(regr);
+}
+
+static void mf_regr_avgy_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, mean_numarray(&regr->x));
+}
+
+static void mf_regr_sxx_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, regr->y.used * calc_var_pop(&regr->y));
+  free_pairarray(regr);
+}
+
+static void mf_regr_sxx_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, regr->y.used * calc_var_pop(&regr->y));
+}
+
+static void mf_regr_syy_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, regr->x.used * calc_var_pop(&regr->x));
+  free_pairarray(regr);
+}
+
+static void mf_regr_syy_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, regr->x.used * calc_var_pop(&regr->x));
+}
+
+static void mf_regr_sxy_final(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr || regr->x.used <= 1) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, regr->y.used * calc_covar_pop(regr));
+  free_pairarray(regr);
+}
+
+static void mf_regr_sxy_value(sqlite3_context *ctx) {
+  struct pairarray *regr = sqlite3_aggregate_context(ctx, 0);
+  if (!regr || regr->x.used <= 1) {
+    return;
+  }
+
+  sqlite3_result_double(ctx, regr->y.used * calc_covar_pop(regr));
 }
 
 struct mean {
@@ -1257,10 +1445,10 @@ __declspec(dllexport)
       {"bit_xor", 1, mf_bit_xor_step, mf_bit_final, mf_bit_final,
        mf_bit_xor_step},
       {"bit_and", 1, mf_bit_and_step, mf_bit_final, NULL, NULL},
-      {"covar_pop", 2, mf_covar_step, mf_covar_pop, mf_covar_pop,
-       mf_covar_inverse},
-      {"covar_samp", 2, mf_covar_step, mf_covar_samp, mf_covar_samp,
-       mf_covar_inverse},
+      {"covar_pop", 2, mf_pairarray_step, mf_covar_pop_final,
+       mf_covar_pop_value, mf_pairarray_inverse},
+      {"covar_samp", 2, mf_pairarray_step, mf_covar_samp_final,
+       mf_covar_samp_value, mf_pairarray_inverse},
       {"stddev_pop", 1, mf_numarray_step, mf_stddev_pop_final,
        mf_stddev_pop_value, mf_numarray_inverse},
       {"stddev_samp", 1, mf_numarray_step, mf_stddev_samp_final,
@@ -1283,7 +1471,27 @@ __declspec(dllexport)
        mf_numarray_inverse},
       {"iqr", 1, mf_numarray_step, mf_iqr_final, mf_iqr_value,
        mf_numarray_inverse},
-      {"corr", 2, mf_corr_step, mf_corr_final, mf_corr_value, mf_corr_inverse},
+      {"corr", 2, mf_pairarray_step, mf_corr_final, mf_corr_value,
+       mf_pairarray_inverse},
+      {"regr_slope", 2, mf_pairarray_step, mf_regr_slope_final,
+       mf_regr_slope_value, mf_pairarray_inverse},
+      {"regr_intercept", 2, mf_pairarray_step, mf_regr_intercept_final,
+       mf_regr_intercept_value, mf_pairarray_inverse},
+      {"regr_count", 2, mf_pairarray_step, mf_regr_count_final,
+       mf_regr_count_value, mf_pairarray_inverse},
+      {"regr_r2", 2, mf_pairarray_step, mf_regr_r2_final, mf_regr_r2_value,
+       mf_pairarray_inverse},
+      {"regr_avgx", 2, mf_pairarray_step, mf_regr_avgx_final,
+       mf_regr_avgx_value, mf_pairarray_inverse},
+      {"regr_avgy", 2, mf_pairarray_step, mf_regr_avgy_final,
+       mf_regr_avgy_value, mf_pairarray_inverse},
+      {"regr_sxx", 2, mf_pairarray_step, mf_regr_sxx_final, mf_regr_sxx_value,
+       mf_pairarray_inverse},
+      {"regr_syy", 2, mf_pairarray_step, mf_regr_syy_final, mf_regr_syy_value,
+       mf_pairarray_inverse},
+      {"regr_sxy", 2, mf_pairarray_step, mf_regr_sxy_final, mf_regr_sxy_value,
+       mf_pairarray_inverse},
+
   };
   int rc = SQLITE_OK;
 

@@ -106,3 +106,15 @@ All of these can be used as window functions.
 * Q1(d) -- 1st Quartile Value.
 * Q3(d) -- 3rd Quartile Value.
 * IQR(d) -- Interquartile Range.
+
+### Linear Regression
+
+* REGR_SLOPE(d,d) -- The slope of a line.
+* REGR_INTERCEPT(d, d) -- The y-intercept of the regression line.
+* REGR_COUNT(d, d) -- The number of pairs used in regression calculations.
+* REGR_R2(d, d) -- The coefficient of determination for the regression.
+* REGR_AVGX(d, d) -- The average of the second values of the pairs.
+* REGR_AVGY(d, d) -- The average of the first values of the pairs.
+* REGR_SXX(d, d)
+* REGR_SYY(d, d)
+* REGR_SXY(d, d)
