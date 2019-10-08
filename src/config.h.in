@@ -6,3 +6,4 @@
 #cmakedefine CMAKE_USE_PTHREADS_INIT
 #cmakedefine ZLIB_FOUND
 #cmakedefine HAVE_REGCOMP
+#cmakedefine HAVE_STRPTIME

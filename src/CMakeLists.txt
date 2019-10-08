@@ -6,6 +6,10 @@ set(CMAKE_THREAD_PREFER_PTHREAD 1)
 find_package(Threads)
 find_package(ZLIB)
 
+set(SAVED_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS})
+set(CMAKE_REQUIRED_DEFINITIONS -D_XOPEN_SOURCE)
+check_symbol_exists(strptime "time.h" HAVE_STRPTIME)
+set(CMAKE_REQUIRED_DEFINITIONS ${SAVED_DEFINITIONS})
 find_package(ICU COMPONENTS data uc i18n)
 if(ICU_FOUND)
   add_library(string_funcs MODULE icu_extras.c stripaccents.c egc_str_funcs.c
@@ -13,7 +17,7 @@ if(ICU_FOUND)
   set_target_properties(string_funcs PROPERTIES C_STANDARD 99
     C_STANDARD_REQUIRED ON)
   target_compile_options(string_funcs PRIVATE -Wall -Wextra)
-  target_include_directories(string_funcs PRIVATE ${ICU_INCLUDE_DIRS})
+  target_include_directories(string_funcs PRIVATE ${ICU_INCLUDE_DIRS} ${PROJECT_BINARY_DIR})
   target_link_libraries(string_funcs ${ICU_LIBRARIES})
 endif()
 

@@ -284,6 +284,19 @@ replace characters that can't be represented in the target encoding.
 Treats `blob` as being encoded in the given character encoding, and
 returns it converted to a Unicode string.
 
+### STRPTIME()
+
+* STRPTIME(time-format, time-string)
+
+Wrapper for the C `strptime()` function. Returns a unixepoch time, or
+`null` on errors.
+
+Example:
+
+    SELECT date(strptime('%m/%d/%Y', '10/08/2019'), 'unixepoch');
+    -> 2019-10-08
+    
+
 Unicode Text Compression
 ------------------------
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Shawn Wagner
+Copyright 2018-2019 Shawn Wagner
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -24,9 +24,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* Additional string functions that don't involve unicode character
    properties or the like. */
 
+#define _XOPEN_SOURCE
+
+#include "config.h"
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <sqlite3ext.h>
 SQLITE_EXTENSION_INIT3
@@ -178,6 +183,38 @@ static void sf_repeat8(sqlite3_context *p, int nArg __attribute__((unused)),
                         SQLITE_UTF8);
 }
 
+static void sf_strptime(sqlite3_context *ctx,
+                        int nArg __attribute__((__unused__)),
+                        sqlite3_value **apArg) {
+  assert(nArg == 2);
+
+#ifdef HAVE_STRPTIME
+  if (sqlite3_value_type(apArg[0]) == SQLITE_NULL ||
+      sqlite3_value_type(apArg[1]) == SQLITE_NULL) {
+    return;
+  }
+
+  const char *fmt = (const char *)sqlite3_value_text(apArg[0]);
+  const char *s = (const char *)sqlite3_value_text(apArg[1]);
+
+  if (!fmt || !s) {
+    return;
+  }
+
+  struct tm t;
+  memset(&t, 0, sizeof t);
+  char *end = strptime(s, fmt, &t);
+  if (!end || *end) {
+    return;
+  }
+
+  time_t secs = mktime(&t);
+  if (secs != (time_t)-1) {
+    sqlite3_result_int64(ctx, (sqlite3_uint64)secs);
+  }
+#endif
+}
+
 int sf_more_init(sqlite3 *db) {
   const struct Scalar {
     const char *zName;  /* Function name */
@@ -191,6 +228,7 @@ int sf_more_init(sqlite3 *db) {
        sf_concat},
       {"concat_ws", -1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_concat_ws},
       {"repeat", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_repeat8},
+      {"strptime", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, NULL, sf_strptime},
   };
   int rc = SQLITE_OK;
 
