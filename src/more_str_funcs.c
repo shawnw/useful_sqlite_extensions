@@ -210,7 +210,7 @@ static void sf_strptime(sqlite3_context *ctx,
 
   time_t secs = mktime(&t);
   if (secs != (time_t)-1) {
-    sqlite3_result_int64(ctx, (sqlite3_uint64)secs);
+    sqlite3_result_int64(ctx, (sqlite3_int64)secs);
   }
 #endif
 }
