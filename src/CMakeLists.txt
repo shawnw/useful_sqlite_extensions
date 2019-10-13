@@ -28,7 +28,10 @@ endif()
 
 find_package(OpenSSL)
 if(OpenSSL_FOUND)
+  set(SAVED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+  set(CMAKE_REQUIRED_LIBRARIES OpenSSL::Crypto)
   check_symbol_exists(EVP_MD_CTX_new "openssl/evp.h" HAVE_EVP_MD_CTX_NEW)
+  set(CMAKE_REQUIRED_LIBRARIES ${SAVED_LIBRARIES})
   add_library(blob_funcs MODULE blob_funcs.c)
   set_target_properties(blob_funcs PROPERTIES C_STANDARD 99
     C_STANDARD_REQUIRED ON)
