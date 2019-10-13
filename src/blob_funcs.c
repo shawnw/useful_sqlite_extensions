@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Shawn Wagner
+Copyright 2018-2019 Shawn Wagner
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -153,27 +153,50 @@ static void bf_sha2(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
 
   unsigned char md[EVP_MAX_MD_SIZE];
   unsigned int mdlen;
-  EVP_MD_CTX *hashctx = EVP_MD_CTX_new();
+  EVP_MD_CTX *hashctx;
+
+#ifdef HAVE_EVP_MD_CTX_NEW
+  hashctx = EVP_MD_CTX_new();
+#else
+  hashctx = EVP_MD_CTX_create();
+#endif
   if (!hashctx) {
     sqlite3_result_error_nomem(ctx);
     return;
   }
   if (!EVP_DigestInit_ex(hashctx, algo, NULL)) {
     sqlite3_result_error(ctx, "EVP_DigestInit_ex failed", -1);
+#ifdef HAVE_EVP_MD_CTX_NEW
     EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
     return;
   }
   if (!EVP_DigestUpdate(hashctx, data, datalen)) {
     sqlite3_result_error(ctx, "EVP_DigestUpdate failed", -1);
+#ifdef HAVE_EVP_MD_CTX_NEW
     EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
     return;
   }
   if (!EVP_DigestFinal_ex(hashctx, md, &mdlen)) {
     sqlite3_result_error(ctx, "EVP_DigestFinal_ex failed", -1);
+#ifdef HAVE_EVP_MD_CTX_NEW
     EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
     return;
   }
-  EVP_MD_CTX_free(hashctx);
+#ifdef HAVE_EVP_MD_CTX_NEW
+    EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
+
   char *hex = to_hex(md, mdlen);
   if (!hex) {
     sqlite3_result_error_nomem(ctx);
@@ -728,27 +751,50 @@ static void bf_create_digest(sqlite3_context *ctx,
 
   unsigned char md[EVP_MAX_MD_SIZE];
   unsigned int mdlen;
-  EVP_MD_CTX *hashctx = EVP_MD_CTX_new();
+  EVP_MD_CTX *hashctx;
+
+#ifdef HAVE_EVP_MD_CTX_NEW
+  hashctx = EVP_MD_CTX_new();
+#else
+  hashctx = EVP_MD_CTX_create();
+#endif
   if (!hashctx) {
     sqlite3_result_error_nomem(ctx);
     return;
   }
   if (!EVP_DigestInit_ex(hashctx, algo, NULL)) {
     sqlite3_result_error(ctx, "EVP_DigestInit_ex failed", -1);
+#ifdef HAVE_EVP_MD_CTX_NEW
     EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
     return;
   }
   if (!EVP_DigestUpdate(hashctx, data, datalen)) {
     sqlite3_result_error(ctx, "EVP_DigestUpdate failed", -1);
+#ifdef HAVE_EVP_MD_CTX_NEW
     EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
     return;
   }
   if (!EVP_DigestFinal_ex(hashctx, md, &mdlen)) {
     sqlite3_result_error(ctx, "EVP_DigestFinal_ex failed", -1);
+#ifdef HAVE_EVP_MD_CTX_NEW
     EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
     return;
   }
-  EVP_MD_CTX_free(hashctx);
+#ifdef HAVE_EVP_MD_CTX_NEW
+    EVP_MD_CTX_free(hashctx);
+#else
+    EVP_MD_CTX_destroy(hashctx);
+#endif
+
   sqlite3_result_blob(ctx, md, mdlen, SQLITE_TRANSIENT);
 }
 

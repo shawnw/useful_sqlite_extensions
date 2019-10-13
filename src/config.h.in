@@ -7,3 +7,4 @@
 #cmakedefine ZLIB_FOUND
 #cmakedefine HAVE_REGCOMP
 #cmakedefine HAVE_STRPTIME
+#cmakedefine HAVE_EVP_MD_CTX_NEW

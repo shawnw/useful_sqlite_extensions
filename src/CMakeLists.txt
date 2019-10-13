@@ -28,6 +28,7 @@ endif()
 
 find_package(OpenSSL)
 if(OpenSSL_FOUND)
+  check_symbol_exists(EVP_MD_CTX_new "openssl/evp.h" HAVE_EVP_MD_CTX_NEW)
   add_library(blob_funcs MODULE blob_funcs.c)
   set_target_properties(blob_funcs PROPERTIES C_STANDARD 99
     C_STANDARD_REQUIRED ON)
