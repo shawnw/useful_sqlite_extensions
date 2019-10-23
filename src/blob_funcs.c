@@ -192,9 +192,9 @@ static void bf_sha2(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
     return;
   }
 #ifdef HAVE_EVP_MD_CTX_NEW
-    EVP_MD_CTX_free(hashctx);
+  EVP_MD_CTX_free(hashctx);
 #else
-    EVP_MD_CTX_destroy(hashctx);
+  EVP_MD_CTX_destroy(hashctx);
 #endif
 
   char *hex = to_hex(md, mdlen);
@@ -790,9 +790,9 @@ static void bf_create_digest(sqlite3_context *ctx,
     return;
   }
 #ifdef HAVE_EVP_MD_CTX_NEW
-    EVP_MD_CTX_free(hashctx);
+  EVP_MD_CTX_free(hashctx);
 #else
-    EVP_MD_CTX_destroy(hashctx);
+  EVP_MD_CTX_destroy(hashctx);
 #endif
 
   sqlite3_result_blob(ctx, md, mdlen, SQLITE_TRANSIENT);
@@ -1557,6 +1557,9 @@ static void bf_crc32c_sw(sqlite3_context *ctx,
 
 #endif
 
+#define BLOB_UUID 'u'
+#define TEXT_UUID 'U'
+
 static void bf_uuid(sqlite3_context *ctx, int nargs __attribute__((unused)),
                     sqlite3_value **args __attribute__((unused))) {
   unsigned char *raw = sqlite3_malloc(16);
@@ -1564,7 +1567,8 @@ static void bf_uuid(sqlite3_context *ctx, int nargs __attribute__((unused)),
     sqlite3_result_error_nomem(ctx);
     return;
   }
-  if (!RAND_bytes(raw, 16)) {
+  /* Use OpenSSL's cryptographically strong PRNG instead of sqlite3's PRNG */
+  if (RAND_bytes(raw, 16) != 1) {
     unsigned long errcode = ERR_get_error();
     char *errmsg =
         sqlite3_mprintf("RAND_bytes: %s", ERR_reason_error_string(errcode));
@@ -1580,6 +1584,42 @@ static void bf_uuid(sqlite3_context *ctx, int nargs __attribute__((unused)),
   raw[6] = (raw[6] & 0xF) | 0x40;
   raw[8] = (raw[8] & 0x3F) | 0x80;
   sqlite3_result_blob(ctx, raw, 16, sqlite3_free);
+  sqlite3_result_subtype(ctx, BLOB_UUID);
+}
+
+/* Check variant and version of a binary uuid */
+static _Bool bf_check_uuid_bits(const unsigned char uuid[static 16]) {
+  unsigned int vers = (uuid[6] & 0xF0) >> 4;
+  unsigned int var = (uuid[8] & 0xE0) >> 5;
+
+  if (vers == 0 || vers > 5) {
+    return 0;
+  }
+
+  /* Only handle variant 1 uuids */
+  if ((var >> 1) != 2) {
+    return 0;
+  }
+  return 1;
+}
+
+/* Check variant and version of a textual uuid */
+static _Bool bf_check_uuid_bytes(const unsigned char uuid[static 36]) {
+  char vers = uuid[14];
+
+  if (vers <= '0' || vers > '5') {
+    return 0;
+  }
+
+  char var = uuid[19];
+  if (isdigit(var)) {
+    var = var - '0';
+  } else if (isupper(var)) {
+    var = var - 'A' + 10;
+  } else {
+    var = var - 'a' + 10;
+  }
+  return (var >> 2) == 2;
 }
 
 static void bf_bin_to_uuid(sqlite3_context *ctx,
@@ -1593,7 +1633,10 @@ static void bf_bin_to_uuid(sqlite3_context *ctx,
   case SQLITE_BLOB:
     uuid = sqlite3_value_blob(args[0]);
     blen = sqlite3_value_bytes(args[0]);
-    if (blen == 16) {
+    if (sqlite3_value_subtype(args[0]) == BLOB_UUID) {
+      break;
+    }
+    if (blen == 16 && bf_check_uuid_bits(uuid)) {
       break;
     }
     /* FALLTHROUGH */
@@ -1606,13 +1649,14 @@ static void bf_bin_to_uuid(sqlite3_context *ctx,
       sqlite3_mprintf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-"
                       "%02x%02x%02x%02x%02x%02x",
                       uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5],
-                      uuid[6], uuid[7], uuid[8], uuid[0], uuid[10], uuid[11],
+                      uuid[6], uuid[7], uuid[8], uuid[9], uuid[10], uuid[11],
                       uuid[12], uuid[13], uuid[14], uuid[15]);
   if (!as_str) {
     sqlite3_result_error_nomem(ctx);
     return;
   }
   sqlite3_result_text(ctx, as_str, -1, sqlite3_free);
+  sqlite3_result_subtype(ctx, TEXT_UUID);
 }
 
 static void bf_uuid_to_bin(sqlite3_context *ctx,
@@ -1626,6 +1670,9 @@ static void bf_uuid_to_bin(sqlite3_context *ctx,
   case SQLITE_TEXT:
     uuid = sqlite3_value_text(args[0]);
     ulen = sqlite3_value_bytes(args[0]);
+    if (sqlite3_value_subtype(args[0]) == TEXT_UUID) {
+      break;
+    }
     if (ulen == 36) {
       break;
     }
@@ -1645,42 +1692,59 @@ static void bf_uuid_to_bin(sqlite3_context *ctx,
              "%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx",
              raw, raw + 1, raw + 2, raw + 3, raw + 4, raw + 5, raw + 6, raw + 7,
              raw + 8, raw + 9, raw + 10, raw + 11, raw + 12, raw + 13, raw + 14,
-             raw + 15) != 16) {
+             raw + 15) != 16 ||
+      !bf_check_uuid_bits(raw)) {
     sqlite3_free(raw);
     sqlite3_result_error(ctx, "not a UUID string", -1);
     return;
   }
   sqlite3_result_blob(ctx, raw, 16, sqlite3_free);
+  sqlite3_result_subtype(ctx, BLOB_UUID);
 }
 
 static void bf_is_uuid(sqlite3_context *ctx, int nargs __attribute__((unused)),
                        sqlite3_value **args) {
-  if (sqlite3_value_type(args[0]) == SQLITE_NULL) {
-    return;
-  }
-
-  const unsigned char *uuid = sqlite3_value_text(args[0]);
-  if (!uuid) {
-    return;
-  }
-  int len = sqlite3_value_bytes(args[0]);
-  if (len != 36) {
-    sqlite3_result_int(ctx, 0);
-    return;
-  }
-
-  static const int dashes[36] = {[8] = 1, [13] = 1, [18] = 1, [23] = 1};
   int valid = 0;
-  for (int i = 0; i < len; i += 1) {
-    if (dashes[i]) {
-      if (uuid[i] != '-') {
-        goto done;
-      }
-    } else if (!isxdigit(uuid[i])) {
+  int type = sqlite3_value_type(args[0]);
+  if (type == SQLITE_NULL) {
+    return;
+  }
+
+  int subtype = sqlite3_value_subtype(args[0]);
+  if (subtype == TEXT_UUID || subtype == BLOB_UUID) {
+    valid = 1;
+    goto done;
+  }
+
+  if (type == SQLITE_BLOB) {
+    const unsigned char *uuid = sqlite3_value_blob(args[0]);
+    if (!uuid) {
+      return;
+    }
+    valid = sqlite3_value_bytes(args[0]) == 16 && bf_check_uuid_bits(uuid);
+    goto done;
+  } else if (type == SQLITE_TEXT) {
+    const unsigned char *uuid = sqlite3_value_text(args[0]);
+    if (!uuid) {
+      return;
+    }
+    int len = sqlite3_value_bytes(args[0]);
+    if (len != 36) {
       goto done;
     }
+
+    static const _Bool dashes[36] = {[8] = 1, [13] = 1, [18] = 1, [23] = 1};
+    for (int i = 0; i < len; i += 1) {
+      if (dashes[i]) {
+        if (uuid[i] != '-') {
+          goto done;
+        }
+      } else if (!isxdigit(uuid[i])) {
+        goto done;
+      }
+    }
+    valid = bf_check_uuid_bytes(uuid);
   }
-  valid = 1;
 done:
   sqlite3_result_int(ctx, valid);
 }
